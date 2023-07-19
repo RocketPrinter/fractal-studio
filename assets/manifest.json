@@ -1,6 +1,6 @@
 {
-  "name": "egui Template PWA",
-  "short_name": "egui-template-pwa",
+  "name": "Egui Wasm Visualizer",
+  "short_name": "egui-wasm-visualizer",
   "icons": [
     {
       "src": "./icon-256.png",

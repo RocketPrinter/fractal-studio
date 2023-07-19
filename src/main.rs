@@ -1,5 +1,7 @@
-#![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+mod example_app;
+mod app;
+mod wgsl;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
@@ -8,9 +10,9 @@ fn main() -> eframe::Result<()> {
 
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(
-        "eframe template",
+        "Visualizer",
         native_options,
-        Box::new(|cc| Box::new(eframe_template::TemplateApp::new(cc))),
+        Box::new(|cc| Box::new(app::EguiApp::new(cc))),
     )
 }
 
@@ -27,7 +29,7 @@ fn main() {
             .start(
                 "the_canvas_id", // hardcode it
                 web_options,
-                Box::new(|cc| Box::new(eframe_template::TemplateApp::new(cc))),
+                Box::new(|cc| Box::new(example_app::TemplateApp::new(cc))),
             )
             .await
             .expect("failed to start eframe");
