@@ -1,9 +1,11 @@
-use eframe::wgpu::{Device, include_wgsl, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor};
+use eframe::wgpu::{include_wgsl, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor, ShaderSource};
 use lazy_static::lazy_static;
+use crate::app::settings::Kind;
+
+type SMD = ShaderModuleDescriptor<'static>;
 
 lazy_static! {
-    pub static ref VERTEX_SHADER: ShaderModuleDescriptor<'static> = include_wgsl!("vertex.wgsl");
-
-    pub static ref TEST_SHADER: ShaderModuleDescriptor<'static> = include_wgsl!("test.wgsl");
-    pub static ref MANDELBROT_SHADER: ShaderModuleDescriptor<'static> = include_wgsl!("mandelbrot.wgsl");
+    pub static ref SHADERS: [(Kind, SMD);1] = [
+    (Kind::Test, include_wgsl!("test.wgsl").to_owned()),
+];
 }

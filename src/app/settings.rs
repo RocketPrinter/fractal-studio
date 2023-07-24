@@ -2,14 +2,14 @@ use eframe::egui::Ui;
 
 #[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct Settings {
-    kind: Kind,
+    pub kind: Kind,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Kind {
     #[default]
     Test,
-    Mandelbrot,
+    //Mandelbrot,
 }
 
 impl Settings {

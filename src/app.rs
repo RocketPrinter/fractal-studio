@@ -1,9 +1,8 @@
-mod settings;
-mod visualizer;
+pub mod settings;
+pub mod visualizer;
 
-use eframe::egui::{Button, CentralPanel, PaintCallback, Sense, SidePanel, Ui, Widget, Window};
+use eframe::egui::{Button, CentralPanel, Frame, Sense, SidePanel, Ui, Widget, Window};
 use eframe::{App, egui};
-use eframe::wgpu::{Extent3d, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages};
 use crate::app::settings::Settings;
 use crate::app::visualizer::Visualizer;
 
@@ -28,7 +27,7 @@ impl EguiApp {
 
 impl App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-
+        ctx.set_debug_on_hover(true);
         if self.settings_pinned {
             Window::new("Visualizer")
                 .vscroll(true)
@@ -50,8 +49,11 @@ impl App for EguiApp {
             });
         }
 
-        CentralPanel::default().show(ctx, |ui| {
-            self.visualizer.ui(ui);
+        CentralPanel::default()
+            // remove margin and background
+            .frame(Frame::default())
+            .show(ctx, |ui| {
+            self.visualizer.ui(&self.settings, ui);
         });
     }
 

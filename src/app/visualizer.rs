@@ -1,10 +1,12 @@
-use std::collections::HashMap;
-use std::sync::{Arc};
-use eframe::egui::{Image, PaintCallback, Sense, TextureId, Ui, Widget};
+use std::collections::{HashMap};
+use std::sync::{Arc, OnceLock};
+use eframe::egui::{PaintCallback, Sense, Ui};
 use eframe::egui_wgpu::CallbackFn;
-use eframe::wgpu::{Color, ColorTargetState, ColorWrites, Device, Extent3d, FragmentState, FrontFace, LoadOp, MultisampleState, Operations, PipelineLayout, PipelineLayoutDescriptor, PolygonMode, PrimitiveState, PrimitiveTopology, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState};
-use crate::app::settings::{Kind};
-use crate::wgsl::{TEST_SHADER, VERTEX_SHADER};
+use eframe::wgpu::{ColorTargetState, ColorWrites, Device, Features, FragmentState, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PrimitiveState, PrimitiveTopology, PushConstantRange, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderStages, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState};
+use lazy_static::lazy_static;
+use type_map::concurrent::Entry::Vacant;
+use crate::app::settings::{Kind, Settings};
+use crate::wgsl::{SHADERS};
 
 #[derive(Default)]
 pub struct Visualizer {
@@ -12,103 +14,76 @@ pub struct Visualizer {
 }
 
 pub struct RenderData {
-    tex: (Texture, TextureView),
-    pipeline_cache: PipelineCache,
-}
-
-pub struct PipelineCache {
-    pipeline_layout: Arc<PipelineLayout>,
     pipelines: HashMap<Kind,RenderPipeline>,
 }
 
-const TEX_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
+const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8Unorm;
+
+lazy_static!{
+    static ref PUSH_CONSTANTS_SUPPORTED: OnceLock<bool> = OnceLock::default();
+}
 
 impl Visualizer {
-    pub fn ui(&mut self, ui: &mut Ui) {
+    pub fn ui(&mut self, settings: &Settings, ui: &mut Ui) {
+        if PUSH_CONSTANTS_SUPPORTED.get() == Some(&false) {
+            ui.colored_label(ui.style().visuals.error_fg_color, "Push constants are not supported by the device");
+            return;
+        };
         let (_response, painter) = ui.allocate_painter(ui.available_size(), Sense::drag());
 
-        let size = ui.clip_rect().size() * ui.ctx().pixels_per_point();
-        let size = Extent3d {
-            width: size.x as u32,
-            height: size.y as u32,
-            depth_or_array_layers: 1,
-        };
+        let kind = settings.kind;
 
         ui.painter().add(PaintCallback {
             rect: painter.clip_rect(),
             callback: Arc::new(CallbackFn::default()
-                // todo: as the expose-ids feature on wgpu is not activated, we'll just have to assume that the device remains constant
-                .prepare(move |device, _queue, encoder, type_map| {
-                    let render_data = type_map.entry().or_insert_with(|| RenderData::new(device, size));
-                    // the size of the element was changed so we realloc the texture
-                    // todo: is this a good idea?
-                    if render_data.tex.0.size() != size {
-                        render_data.tex = create_tex(device, size);
-                        println!("reallocated texture"); // todo: remove later
+                // as the expose-ids feature on wgpu is not activated, we'll just have to assume that the device remains constant
+                .prepare(move |device, _queue, _encoder, type_map| {
+                    if let Vacant(e) = type_map.entry::<RenderData>() {
+                        if let Some(render_data) = RenderData::new(device) {
+                            e.insert(render_data);
+                        }
                     }
-
-                    let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                        label: Some("Visualizer pass"),
-                        color_attachments: &[Some(RenderPassColorAttachment{
-                            view: &render_data.tex.1,
-                            resolve_target: None,
-                            ops: Operations {
-                                load: LoadOp::Clear( Color::BLACK),
-                                store: true,
-                            },
-                        })],
-                        depth_stencil_attachment: None,
-                    });
-
-                    pass.set_pipeline(render_data.pipeline_cache.get_pipeline(device, Kind::Test));
-
-                    // todo:
-
-                    drop(pass);
                     vec![]
                 })
-                .paint(|_info,_pass,_typemap| {
-                    ()
+                .paint(move |_info, pass, type_map| {
+                    let Some(render_data) = type_map.get::<RenderData>() else {return};
+
+                    pass.set_pipeline(render_data.pipelines.get(&kind).unwrap());
+                    pass.draw(0..3, 0..1);
                 })
             ),
         });
-        let _response = Image::new(TextureId::Managed(0), ui.available_size()).sense(Sense::drag()).ui(ui);
     }
 }
 
 impl RenderData {
-    pub fn new(device: &Device, size: Extent3d) -> Self {
-        Self {
-            tex: create_tex(device, size),
-            pipeline_cache: PipelineCache::new(device),
+    pub fn new(device: &Device) -> Option<Self> {
+        if !(*PUSH_CONSTANTS_SUPPORTED.get_or_init(|| device.features().intersects(Features::PUSH_CONSTANTS))) {
+            return None;
         }
-    }
-}
 
-impl PipelineCache {
-    pub fn new(device: &Device) -> Self {
-        Self {
-            pipeline_layout: Arc::new(device.create_pipeline_layout(&PipelineLayoutDescriptor {
-                label: Some("Visualizer layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            })),
-            pipelines: Default::default(),
-        }
-    }
+        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("Visualizer layout"),
+            bind_group_layouts: &[],
+            push_constant_ranges: &[PushConstantRange {
+                stages: ShaderStages::FRAGMENT,
+                range: 0..16, // 16 bytes, for now
+            }],
+        });
 
-    pub fn get_pipeline(&mut self, device: &Device, kind: Kind) -> &RenderPipeline  {
-        self.pipelines.entry(kind).or_insert_with(||
-            device.create_render_pipeline(&RenderPipelineDescriptor{
-                label: None, // todo:
-                layout: Some(&*self.pipeline_layout.clone()),
+        let pipelines = HashMap::from_iter(SHADERS.iter().map(|(kind, shader)| {
+            let shader_module = device.create_shader_module(shader.to_owned());
+
+            let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor{
+                label: Some(&format!("Pipeline visualizer {kind:?}")),
+                layout: Some(&pipeline_layout),
                 vertex: VertexState {
-                    module: &device.create_shader_module(VERTEX_SHADER.clone()),
+                    module: &shader_module,
                     entry_point: "vertex",
                     buffers: &[],
                 },
                 fragment: Some(FragmentState {
-                    module: &device.create_shader_module(TEST_SHADER.clone()), // todo
+                    module: &shader_module,
                     entry_point: "fragment",
                     targets: &[Some(ColorTargetState{
                         format: TEX_FORMAT,
@@ -120,22 +95,12 @@ impl PipelineCache {
                 depth_stencil: None,
                 multisample: MultisampleState::default(),
                 multiview: None,
-            })
-        )
-    }
-}
+            });
+            (kind.to_owned(), pipeline)
+        }));
 
-fn create_tex(device: &Device, size: Extent3d) -> (Texture, TextureView) {
-    let tex = device.create_texture(&TextureDescriptor{
-        label: Some("Visualizer target tex"),
-        size,
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: TextureDimension::D2,
-        format: TEX_FORMAT,
-        view_formats: &[TextureFormat::Rgba8UnormSrgb],
-        usage: TextureUsages::all() - TextureUsages::STORAGE_BINDING,
-    });
-    let view = tex.create_view(&Default::default());
-    (tex, view)
+        Some(Self {
+            pipelines,
+        })
+    }
 }
