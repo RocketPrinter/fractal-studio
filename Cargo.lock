@@ -886,6 +886,7 @@ name = "egui_wasm_visualizer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytemuck",
  "eframe",
  "env_logger",
  "lazy_static",

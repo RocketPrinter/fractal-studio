@@ -2,7 +2,7 @@ pub mod settings;
 pub mod visualizer;
 
 use eframe::egui::{Button, CentralPanel, Frame, Sense, SidePanel, Ui, Widget, Window};
-use eframe::{App, egui};
+use eframe::{App, CreationContext, egui};
 use crate::app::settings::Settings;
 use crate::app::visualizer::Visualizer;
 
@@ -16,7 +16,7 @@ pub struct EguiApp {
 }
 
 impl EguiApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &CreationContext<'_>) -> Self {
         if let Some(storage) = cc.storage {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
@@ -27,7 +27,7 @@ impl EguiApp {
 
 impl App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.set_debug_on_hover(true);
+        //ctx.set_debug_on_hover(true);
         if self.settings_pinned {
             Window::new("Visualizer")
                 .vscroll(true)
