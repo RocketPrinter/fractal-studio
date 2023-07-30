@@ -48,13 +48,16 @@ impl Visualizer {
         let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
 
         // changing zoom and offset
+        self.offset += response.drag_delta() * vec2(-1.,1.) * DRAG_FACTOR;
         if response.hovered() {
             ui.input(|input| {
-                self.scale *= 1. + input.scroll_delta.y * ZOOM_FACTOR;
-                self.scale = self.scale.clamp(0.0001, 100000000.); // prevent zoom from becoming 0 or inf
+                let mut new_scale = self.scale * (1. + input.scroll_delta.y * ZOOM_FACTOR);
+                new_scale = new_scale.clamp(0.0001, 100000000.); // prevent zoom from becoming 0 or inf
+                // rescale to make zooming centered on the screen
+                self.offset *= self.scale / new_scale;
+                self.scale = new_scale;
             });
         }
-        self.offset += response.drag_delta() * vec2(-1.,1.) * DRAG_FACTOR;
 
         // packing
         let aspect_ratio = painter.clip_rect().aspect_ratio();
