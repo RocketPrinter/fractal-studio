@@ -3,10 +3,10 @@ use std::sync::{Arc, OnceLock};
 use bytemuck::bytes_of;
 use eframe::egui::{Align2, Key, PaintCallback, Pos2, Sense, TextStyle, Ui, Vec2, vec2};
 use eframe::egui_wgpu::CallbackFn;
-use eframe::wgpu::{ColorTargetState, ColorWrites, Device, Features, FragmentState, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PrimitiveState, PrimitiveTopology, PushConstantRange, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderStages, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState};
+use eframe::wgpu::{ColorTargetState, ColorWrites, Device, Features, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, QuerySetDescriptor, QueryType, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderStages, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState};
 use lazy_static::lazy_static;
 use type_map::concurrent::Entry::Vacant;
-use crate::app::settings::{Kind, Settings};
+use crate::app::settings::{Kind, KindDiscriminants, Settings};
 use crate::wgsl::{SHADERS};
 
 #[derive(Debug, Clone)]
@@ -16,13 +16,14 @@ pub struct Visualizer {
 }
 
 pub struct RenderData {
-    pipelines: HashMap<Kind,RenderPipeline>,
+    pipelines: HashMap<KindDiscriminants,RenderPipeline>,
 }
 
 const ZOOM_FACTOR: f32 = 0.001;
 const DRAG_FACTOR: f32 = 0.003;
 //const WASD_FACTOR: f32 = 0.01;
 const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8Unorm;
+pub const FRAGMENT_PUSH_CONSTANTS_SIZE: u32 = 16;
 
 lazy_static!{
     static ref PUSH_CONSTANTS_SUPPORTED: OnceLock<bool> = OnceLock::default();
@@ -49,29 +50,22 @@ impl Visualizer {
         // changing zoom and offset
         if response.hovered() {
             ui.input(|input| {
-                /* todo: was not smooth so we abandoned it for now
-                let x: i32 = [(Key::D, 1), (Key::ArrowRight, 1), (Key::A, -1), (Key::ArrowLeft, -1)]
-                    .iter().map(|(k, s)| input.key_down(*k) as i32 * s).sum();
-                let y: i32 = [(Key::W, 1), (Key::ArrowUp, 1), (Key::S, -1), (Key::ArrowDown, -1)]
-                    .iter().map(|(k, s)| input.key_down(*k) as i32 * s).sum();
-                self.offset += Vec2::new(x as f32, y as f32) * WASD_FACTOR;
-                */
-
                 self.scale *= 1. + input.scroll_delta.y * ZOOM_FACTOR;
-                self.scale = self.scale.clamp(0.0001, 100000000.); // prevent zoom from becoming 0
+                self.scale = self.scale.clamp(0.0001, 100000000.); // prevent zoom from becoming 0 or inf
             });
         }
         self.offset += response.drag_delta() * vec2(-1.,1.) * DRAG_FACTOR;
 
         // packing
-        let aspect_ratio = painter.clip_rect().aspect_ratio(); dbg!(aspect_ratio);
+        let aspect_ratio = painter.clip_rect().aspect_ratio();
         let packed_constants = [
             (self.scale * aspect_ratio).to_ne_bytes(), self.scale.to_ne_bytes(), // scale w/ aspect ratio correction
             self.offset.x.to_ne_bytes(), self.offset.y.to_ne_bytes() // offset
         ];
 
         // rendering
-        let kind = settings.kind;
+        let kind_discriminant: KindDiscriminants = (&settings.kind).into();
+        let fragment_push_constants = settings.kind.push_constants();
         painter.add(PaintCallback {
             rect: painter.clip_rect(),
             callback: Arc::new(CallbackFn::default()
@@ -87,14 +81,19 @@ impl Visualizer {
                 .paint(move |_info, pass, type_map| {
                     let Some(render_data) = type_map.get::<RenderData>() else {return};
 
-                    pass.set_pipeline(render_data.pipelines.get(&kind).unwrap());
+                    pass.set_pipeline(render_data.pipelines.get(&kind_discriminant).unwrap());
+
                     pass.set_push_constants(ShaderStages::VERTEX, 0, bytes_of(&packed_constants));
+                    if let Some(fragment_push_constants) = fragment_push_constants {
+                        pass.set_push_constants(ShaderStages::FRAGMENT, 16, bytes_of(&fragment_push_constants));
+                    }
+                    
                     // vertex coordinates are hardcoded in the shader so a vertex buffer is not needed
                     pass.draw(0..6, 0..1);
                 })
             ),
         });
-
+        
         // overlay text
         painter.text(painter.clip_rect().left_bottom(),
                      Align2::LEFT_BOTTOM, format!("{self:?}"),
@@ -112,10 +111,16 @@ impl RenderData {
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Visualizer layout"),
             bind_group_layouts: &[],
-            push_constant_ranges: &[PushConstantRange {
-                stages: ShaderStages::VERTEX,
-                range: 0..16, // zoom + offset
-            }],
+            push_constant_ranges: &[
+                PushConstantRange {
+                    stages: ShaderStages::VERTEX,
+                    range: 0..16, // zoom + offset
+                },
+                PushConstantRange {
+                    stages: ShaderStages::FRAGMENT,
+                    range: 16..(16+ FRAGMENT_PUSH_CONSTANTS_SIZE),
+                }
+            ],
         });
 
         let pipelines = HashMap::from_iter(SHADERS.iter().map(|(kind, shader)| {

@@ -17,23 +17,17 @@ var<private> v_positions: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
     vec2<f32>( 1.,-1.),
 );
 
-var<private> v_colors: array<vec4<f32>, 3> = array<vec4<f32>, 3>(
-    vec4<f32>(1.0, 0.0, 0.0, 1.0),
-    vec4<f32>(0.0, 1.0, 0.0, 1.0),
-    vec4<f32>(0.0, 0.0, 1.0, 1.0),
-);
-
-var<push_constant> constants: Constants;
+var<push_constant> v_constants: Constants;
 
 @vertex
 fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.position = vec4<f32>(v_positions[v_idx], 0.0, 1.0);
-    out.uv = (v_positions[v_idx] + constants.offset) * constants.scale;
+    out.uv = (v_positions[v_idx] + v_constants.offset) * v_constants.scale;
     return out;
 }
 
 @fragment
 fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.uv, 0.0, 1.0);
+    return vec4<f32>(fract(in.uv/2. + 0.5) * 2. - 1. , 0.0, 1.0);
 }
