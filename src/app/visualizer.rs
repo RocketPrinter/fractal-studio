@@ -49,12 +49,18 @@ impl Visualizer {
 
         // changing zoom and offset
         self.offset += response.drag_delta() * vec2(-1.,1.) * DRAG_FACTOR;
-        if response.hovered() {
+        if let Some(hover_pos) = response.hover_pos() {
             ui.input(|input| {
                 let mut new_scale = self.scale * (1. + input.scroll_delta.y * ZOOM_FACTOR);
                 new_scale = new_scale.clamp(0.0001, 100000000.); // prevent zoom from becoming 0 or inf
+                let delta_scale = self.scale / new_scale;
                 // rescale to make zooming centered on the screen
-                self.offset *= self.scale / new_scale;
+                self.offset *= delta_scale;
+                // calculate an offset to the offset that will center the zooming on the cursor
+                let mut cursor_scale = 2. * (hover_pos-painter.clip_rect().min) / painter.clip_rect().size() - vec2(1.,1.);
+                cursor_scale.y *= -1.;
+                self.offset += cursor_scale * (delta_scale-1.);
+
                 self.scale = new_scale;
             });
         }
