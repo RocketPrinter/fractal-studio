@@ -4,7 +4,6 @@ use bytemuck::bytes_of;
 use eframe::egui::{Align2, Key, PaintCallback, Pos2, Sense, TextStyle, Ui, Vec2, vec2};
 use eframe::egui_wgpu::CallbackFn;
 use eframe::wgpu::{ColorTargetState, ColorWrites, Device, Features, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, QuerySetDescriptor, QueryType, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderStages, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState};
-use lazy_static::lazy_static;
 use type_map::concurrent::Entry::Vacant;
 use crate::app::settings::{Kind, KindDiscriminants, Settings};
 use crate::wgsl::{SHADERS};
@@ -23,11 +22,7 @@ const ZOOM_FACTOR: f32 = 0.001;
 const DRAG_FACTOR: f32 = 0.003;
 //const WASD_FACTOR: f32 = 0.01;
 const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8Unorm;
-pub const FRAGMENT_PUSH_CONSTANTS_SIZE: u32 = 16;
-
-lazy_static!{
-    static ref PUSH_CONSTANTS_SUPPORTED: OnceLock<bool> = OnceLock::default();
-}
+pub const FRAGMENT_PUSH_CONSTANTS_SIZE: usize = 16;
 
 impl Default for Visualizer {
     fn default() -> Self {
@@ -40,11 +35,6 @@ impl Default for Visualizer {
 
 impl Visualizer {
     pub fn ui(&mut self, settings: &Settings, ui: &mut Ui) {
-        if PUSH_CONSTANTS_SUPPORTED.get() == Some(&false) {
-            ui.colored_label(ui.style().visuals.error_fg_color, "Push constants are not supported by the device");
-            return;
-        };
-
         let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
 
         // changing zoom and offset
@@ -52,7 +42,7 @@ impl Visualizer {
         if let Some(hover_pos) = response.hover_pos() {
             ui.input(|input| {
                 let mut new_scale = self.scale * (1. + input.scroll_delta.y * ZOOM_FACTOR);
-                new_scale = new_scale.clamp(0.0001, 100000000.); // prevent zoom from becoming 0 or inf
+                new_scale = new_scale.clamp(0.0000000001, 100000000.); // prevent zoom from becoming 0 or inf
                 let delta_scale = self.scale / new_scale;
                 // rescale to make zooming centered on the screen
                 self.offset *= delta_scale;
@@ -81,9 +71,7 @@ impl Visualizer {
                 // as the expose-ids feature on wgpu is not activated, we'll just have to assume that the device remains constant
                 .prepare(move |device, _queue, _encoder, type_map| {
                     if let Vacant(e) = type_map.entry::<RenderData>() {
-                        if let Some(render_data) = RenderData::new(device) {
-                            e.insert(render_data);
-                        }
+                        e.insert(RenderData::new(device));
                     }
                     vec![]
                 })
@@ -96,13 +84,13 @@ impl Visualizer {
                     if let Some(fragment_push_constants) = fragment_push_constants {
                         pass.set_push_constants(ShaderStages::FRAGMENT, 16, bytes_of(&fragment_push_constants));
                     }
-                    
+
                     // vertex coordinates are hardcoded in the shader so a vertex buffer is not needed
                     pass.draw(0..6, 0..1);
                 })
             ),
         });
-        
+
         // overlay text
         painter.text(painter.clip_rect().left_bottom(),
                      Align2::LEFT_BOTTOM, format!("{self:?}"),
@@ -112,10 +100,7 @@ impl Visualizer {
 }
 
 impl RenderData {
-    pub fn new(device: &Device) -> Option<Self> {
-        if !(*PUSH_CONSTANTS_SUPPORTED.get_or_init(|| device.features().intersects(Features::PUSH_CONSTANTS))) {
-            return None;
-        }
+    pub fn new(device: &Device) -> Self {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Visualizer layout"),
@@ -127,7 +112,7 @@ impl RenderData {
                 },
                 PushConstantRange {
                     stages: ShaderStages::FRAGMENT,
-                    range: 16..(16+ FRAGMENT_PUSH_CONSTANTS_SIZE),
+                    range: 16..(16+ FRAGMENT_PUSH_CONSTANTS_SIZE as u32),
                 }
             ],
         });
@@ -160,8 +145,8 @@ impl RenderData {
             (kind.to_owned(), pipeline)
         }));
 
-        Some(Self {
+        Self {
             pipelines,
-        })
+        }
     }
 }

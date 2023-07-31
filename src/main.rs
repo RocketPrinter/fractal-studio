@@ -2,9 +2,11 @@
 
 use std::sync::Arc;
 use eframe::wgpu;
+use eframe::wgpu::Backends;
 
 mod app;
 mod wgsl;
+mod helpers;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
@@ -28,14 +30,14 @@ fn main() {
 
     let mut web_options = eframe::WebOptions::default();
     // disallow WebGPU as it doesn't support Push Constants
-    web_options.wgpu_options.supported_backends &= !Backends::BROWSER_WEBGPU;
-    web_options.wgpu_options.device_descriptor = device_descriptor();
+    //web_options.wgpu_options.supported_backends &= !eframe::wgpu::Backends::BROWSER_WEBGPU;
+    //web_options.wgpu_options.device_descriptor = device_descriptor();
     wasm_bindgen_futures::spawn_local(async {
         eframe::WebRunner::new()
             .start(
                 "the_canvas_id", // hardcode it
                 web_options,
-                Box::new(|cc| Box::new(example_app::TemplateApp::new(cc))),
+                Box::new(|cc| Box::new(app::EguiApp::new(cc))),
             )
             .await
             .expect("failed to start eframe");
