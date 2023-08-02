@@ -2,11 +2,11 @@
 
 use std::sync::Arc;
 use eframe::wgpu;
-use eframe::wgpu::Backends;
 
 mod app;
-mod wgsl;
 mod helpers;
+mod fractal;
+mod wgsl;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]

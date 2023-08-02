@@ -1,12 +1,13 @@
 use std::collections::{HashMap};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc};
 use bytemuck::bytes_of;
-use eframe::egui::{Align2, Key, PaintCallback, Pos2, Sense, TextStyle, Ui, Vec2, vec2};
+use eframe::egui::{Align2, PaintCallback, Sense, TextStyle, Ui, Vec2, vec2};
 use eframe::egui_wgpu::CallbackFn;
-use eframe::wgpu::{ColorTargetState, ColorWrites, Device, Features, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, QuerySetDescriptor, QueryType, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderStages, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState};
+use eframe::wgpu::{ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexState};
 use type_map::concurrent::Entry::Vacant;
-use crate::app::settings::{Kind, KindDiscriminants, Settings};
-use crate::wgsl::{SHADERS};
+use crate::app::settings::{Settings};
+use crate::fractal::FractalDiscriminants;
+use crate::wgsl::SHADERS;
 
 #[derive(Debug, Clone)]
 pub struct Visualizer {
@@ -15,14 +16,15 @@ pub struct Visualizer {
 }
 
 pub struct RenderData {
-    pipelines: HashMap<KindDiscriminants,RenderPipeline>,
+    pipelines: HashMap<FractalDiscriminants,RenderPipeline>,
 }
+
+pub const FRAGMENT_PUSH_CONSTANTS_SIZE: usize = 16;
 
 const ZOOM_FACTOR: f32 = 0.001;
 const DRAG_FACTOR: f32 = 0.003;
 //const WASD_FACTOR: f32 = 0.01;
 const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8Unorm;
-pub const FRAGMENT_PUSH_CONSTANTS_SIZE: usize = 16;
 
 impl Default for Visualizer {
     fn default() -> Self {
@@ -63,8 +65,8 @@ impl Visualizer {
         ];
 
         // rendering
-        let kind_discriminant: KindDiscriminants = (&settings.kind).into();
-        let fragment_push_constants = settings.kind.push_constants();
+        let fractal_d = FractalDiscriminants::from(&settings.fractal);
+        let fragment_push_constants = settings.fractal.push_constants();
         painter.add(PaintCallback {
             rect: painter.clip_rect(),
             callback: Arc::new(CallbackFn::default()
@@ -78,7 +80,7 @@ impl Visualizer {
                 .paint(move |_info, pass, type_map| {
                     let Some(render_data) = type_map.get::<RenderData>() else {return};
 
-                    pass.set_pipeline(render_data.pipelines.get(&kind_discriminant).unwrap());
+                    pass.set_pipeline(render_data.pipelines.get(&fractal_d).unwrap());
 
                     pass.set_push_constants(ShaderStages::VERTEX, 0, bytes_of(&packed_constants));
                     if let Some(fragment_push_constants) = fragment_push_constants {

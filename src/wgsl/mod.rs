@@ -1,13 +1,13 @@
-use eframe::wgpu::{include_wgsl, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor, ShaderSource};
+use eframe::wgpu::{ShaderModuleDescriptor, include_wgsl};
 use lazy_static::lazy_static;
-use crate::app::settings::KindDiscriminants;
+use crate::fractal::FractalDiscriminants;
+use crate::fractal::FractalDiscriminants::*;
 
+pub type Smd = ShaderModuleDescriptor<'static>;
 
-type SMD = ShaderModuleDescriptor<'static>;
-
-lazy_static! {
-    pub static ref SHADERS: [(KindDiscriminants, SMD); 2] = [
-        (KindDiscriminants::Test, include_wgsl!("test.wgsl").to_owned()),
-        (KindDiscriminants::Mandelbrot, include_wgsl!("mandelbrot.wgsl").to_owned()),
+lazy_static!{
+    pub static ref SHADERS: [(FractalDiscriminants, Smd);2] = [
+        (TestGrid,include_wgsl!("test_grid.wgsl")),
+        (Mandelbrot,include_wgsl!("mandelbrot.wgsl")),
     ];
 }

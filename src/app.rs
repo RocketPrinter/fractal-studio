@@ -1,7 +1,7 @@
 pub mod settings;
 pub mod visualizer;
 
-use eframe::egui::{Button, CentralPanel, Frame, Sense, SidePanel, Ui, Widget, Window};
+use eframe::egui::{Button, CentralPanel, Frame, SidePanel, Widget, Window};
 use eframe::{App, CreationContext, egui};
 use crate::app::settings::Settings;
 use crate::app::visualizer::Visualizer;
