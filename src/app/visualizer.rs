@@ -59,10 +59,10 @@ impl Visualizer {
 
         // packing
         let aspect_ratio = painter.clip_rect().aspect_ratio();
-        let packed_constants = [
-            (self.scale * aspect_ratio).to_ne_bytes(), self.scale.to_ne_bytes(), // scale w/ aspect ratio correction
-            self.offset.x.to_ne_bytes(), self.offset.y.to_ne_bytes() // offset
-        ];
+        let mut packed_constants = [0u8;16];
+        packed_constants[0.. 4].copy_from_slice(&(self.scale * aspect_ratio).to_ne_bytes());
+        packed_constants[4.. 8].copy_from_slice(&self.scale.to_ne_bytes());
+        packed_constants[8..16].copy_from_slice(bytes_of(&self.offset));
 
         // rendering
         let fractal_d = FractalDiscriminants::from(&settings.fractal);
@@ -82,7 +82,7 @@ impl Visualizer {
 
                     pass.set_pipeline(render_data.pipelines.get(&fractal_d).unwrap());
 
-                    pass.set_push_constants(ShaderStages::VERTEX, 0, bytes_of(&packed_constants));
+                    pass.set_push_constants(ShaderStages::VERTEX, 0, &packed_constants);
                     if let Some(fragment_push_constants) = fragment_push_constants {
                         pass.set_push_constants(ShaderStages::FRAGMENT, 16, bytes_of(&fragment_push_constants));
                     }
@@ -94,10 +94,10 @@ impl Visualizer {
         });
 
         // overlay text
-        painter.text(painter.clip_rect().left_bottom(),
-                     Align2::LEFT_BOTTOM, format!("{self:?}"),
-                     ui.style().text_styles.get(&TextStyle::Body).cloned().unwrap_or_default(),
-                     ui.style().visuals.strong_text_color());
+        painter.debug_text(painter.clip_rect().left_bottom(),
+                           Align2::LEFT_BOTTOM,
+                           ui.style().visuals.strong_text_color(),
+                           format!("{self:?}"));
     }
 }
 

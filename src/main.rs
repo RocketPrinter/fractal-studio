@@ -4,7 +4,6 @@ use std::sync::Arc;
 use eframe::wgpu;
 
 mod app;
-mod helpers;
 mod fractal;
 mod wgsl;
 

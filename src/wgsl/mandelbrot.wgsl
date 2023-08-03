@@ -6,6 +6,7 @@ struct VertexOut {
 struct Constants {
     scale: vec2<f32>,
     offset: vec2<f32>,
+
     iterations: u32,
 }
 
@@ -23,7 +24,7 @@ var<push_constant> constants: Constants;
 @vertex
 fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     var out: VertexOut;
-    out.position = vec4<f32>(v_positions[v_idx], 0.0, 1.0);
+    out.position = vec4(v_positions[v_idx], 0.0, 1.0);
     out.uv = (v_positions[v_idx] + constants.offset) * constants.scale;
     return out;
 }
@@ -32,7 +33,7 @@ fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 @fragment
 fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
     let iterations = calc_iterations(in.uv);
-    return vec4<f32>(vec3<f32>(f32(iterations) / f32(constants.iterations)), 1.0);
+    return vec4(vec3(f32(iterations - 1u) / f32(constants.iterations - 1u)), 1.0);
 }
 
 
@@ -50,17 +51,3 @@ fn calc_iterations(p0: vec2<f32>) -> u32 {
     }
     return iterations;
 }
-
-/*
-x2:= 0
-y2:= 0
-w:= 0
-
-while (x2 + y2 ≤ 4 and iteration < max_iteration) do
-    x:= x2 - y2 + x0
-    y:= w - x2 - y2 + y0
-    x2:= x * x
-    y2:= y * y
-    w:= (x + y) * (x + y)
-    iteration:= iteration + 1
-*/
