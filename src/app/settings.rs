@@ -3,10 +3,19 @@ use eframe::egui::{ComboBox, DragValue, Ui, Vec2, Widget};
 use strum::{EnumMessage, IntoEnumIterator};
 use crate::fractal::{Fractal, FractalDiscriminants};
 
-#[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Settings {
-    // todo: move scale and offset here
     pub fractal: Fractal,
+    pub debug_label: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            fractal: Default::default(),
+            debug_label: true,
+        }
+    }
 }
 
 impl Settings {
@@ -23,6 +32,9 @@ impl Settings {
             });
 
         self.fractal.settings_ui(ui);
+
+        ui.separator();
+        ui.checkbox(&mut self.debug_label, "Debug label");
     }
 }
 

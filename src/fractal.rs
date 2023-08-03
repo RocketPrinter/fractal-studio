@@ -1,5 +1,5 @@
 use bytemuck::bytes_of;
-use eframe::egui::{CollapsingHeader, DragValue, Grid, Ui, Vec2, Widget};
+use eframe::egui::{CollapsingHeader, CursorIcon, DragValue, Grid, Ui, Vec2, Widget};
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
 use crate::app::settings::vec2_ui;
 use crate::app::visualizer::FRAGMENT_PUSH_CONSTANTS_SIZE;
@@ -15,7 +15,7 @@ pub enum Fractal {
     Julia {
         iterations: u32,
         c: Vec2,
-        eyedropping: bool,
+        pick_using_cursor: bool,
         animating_on_circle: bool,
     },
 }
@@ -31,7 +31,7 @@ impl Fractal {
         match discriminant {
             FractalDiscriminants::TestGrid => Fractal::TestGrid,
             FractalDiscriminants::Mandelbrot => Fractal::Mandelbrot { iterations: 300 },
-            FractalDiscriminants::Julia => Fractal::Julia { iterations: 100, c: Vec2::new(0.25,-0.55), eyedropping: false, animating_on_circle: false },
+            FractalDiscriminants::Julia => Fractal::Julia { iterations: 100, c: Vec2::new(-0.76,-0.15), pick_using_cursor: false, animating_on_circle: false },
         }
     }
 
@@ -45,7 +45,7 @@ impl Fractal {
                     DragValue::new(iterations).speed(1).clamp_range(1..=3000).ui(ui);
                 });
             },
-            Fractal::Julia { iterations, c, eyedropping, animating_on_circle } => {
+            Fractal::Julia { iterations, c, pick_using_cursor, animating_on_circle } => {
                 ui.horizontal(|ui|{
                     ui.label("Iterations");
                     DragValue::new(iterations).speed(1).clamp_range(0..=3000).ui(ui);
@@ -56,17 +56,15 @@ impl Fractal {
                     vec2_ui(ui, c, true, Some(0.02), None);
                 });
 
-                /* todo
-                let eyedropper_button = ui.button("Pick with cursor").clicked();
-                if *eyedropping {
-                    *animating_unit_circle = None;
-                    *eyedropping = !ui.input(|input| input.pointer.any_down());
+                let pick_using_cursor_button = ui.button("Pick with cursor").clicked();
+                if *pick_using_cursor {
+                    *animating_on_circle = false;
+                    *pick_using_cursor = !ui.input(|input| input.pointer.any_down());
                     ui.ctx().set_cursor_icon(CursorIcon::Crosshair);
                     // the visualizer will call the method
                 } else  {
-                    *eyedropping = eyedropper_button;
+                    *pick_using_cursor = pick_using_cursor_button;
                 }
-                */
 
                 if *animating_on_circle {
                     *animating_on_circle = !ui.button("Stop").clicked();
@@ -93,18 +91,16 @@ impl Fractal {
         });
     }
 
-    /* todo
-    /// called by the visualizer to determine if it should enable eyedropping mode
-    pub fn enable_eyedrop(&mut self) -> bool {
-        if let Fractal::Julia { eyedropping, .. } = self { *eyedropping } else { false }
-    }
-
-    pub fn eyedrop_result(&mut self, result: Vec2) {
-        if let Fractal::Julia { c, .. } = self {
-            *c = result
+    /// cursor's position in the coordinate system of the fragment shader
+    /// will only be executed if cursor is hovering over the visualizer
+    pub fn cursor_shader_space(&mut self, pos: Vec2) {
+        match self {
+            Fractal::Julia { c, pick_using_cursor, .. } if *pick_using_cursor => {
+                *c = pos;
+            },
+            _ => (),
         }
     }
-    */
 
     pub fn push_constants(&self) -> Option<[u8; FRAGMENT_PUSH_CONSTANTS_SIZE]> {
         match self {

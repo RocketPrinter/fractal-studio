@@ -53,7 +53,7 @@ impl App for EguiApp {
             // remove margin and background
             .frame(Frame::default())
             .show(ctx, |ui| {
-            self.visualizer.ui(&self.settings, ui);
+            self.visualizer.ui(&mut self.settings, ui);
         });
     }
 

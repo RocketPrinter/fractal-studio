@@ -1,7 +1,7 @@
 use std::collections::{HashMap};
 use std::sync::{Arc};
 use bytemuck::bytes_of;
-use eframe::egui::{Align2, PaintCallback, Sense, TextStyle, Ui, Vec2, vec2};
+use eframe::egui::{Align2, PaintCallback, Sense, Ui, Vec2, vec2};
 use eframe::egui_wgpu::CallbackFn;
 use eframe::wgpu::{ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexState};
 use type_map::concurrent::Entry::Vacant;
@@ -36,32 +36,38 @@ impl Default for Visualizer {
 }
 
 impl Visualizer {
-    pub fn ui(&mut self, settings: &Settings, ui: &mut Ui) {
+    pub fn ui(&mut self, settings: &mut Settings, ui: &mut Ui) {
         let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
 
+        let aspect_ratio_correction = Vec2::new(painter.clip_rect().aspect_ratio(), 1.);
+
         // changing zoom and offset
+        let mut cursor_shader_space: Option<Vec2> = None;
         self.offset += response.drag_delta() * vec2(-1.,1.) * DRAG_FACTOR;
         if let Some(hover_pos) = response.hover_pos() {
             ui.input(|input| {
+                // from -1 to 1
+                let mut cursor_clip_space = 2. * (hover_pos-painter.clip_rect().min) / painter.clip_rect().size() - vec2(1., 1.);
+                cursor_clip_space.y *= -1.;
+
                 let mut new_scale = self.scale * (1. + input.scroll_delta.y * ZOOM_FACTOR);
-                new_scale = new_scale.clamp(0.0000000001, 100000000.); // prevent zoom from becoming 0 or inf
+                new_scale = new_scale.clamp(0.0000000001, 100.); // prevent zoom from becoming 0 or inf
                 let delta_scale = self.scale / new_scale;
                 // rescale to make zooming centered on the screen
                 self.offset *= delta_scale;
                 // calculate an offset to the offset that will center the zooming on the cursor
-                let mut cursor_scale = 2. * (hover_pos-painter.clip_rect().min) / painter.clip_rect().size() - vec2(1.,1.);
-                cursor_scale.y *= -1.;
-                self.offset += cursor_scale * (delta_scale-1.);
+                self.offset += cursor_clip_space * (delta_scale-1.);
 
                 self.scale = new_scale;
+
+                cursor_shader_space = Some((cursor_clip_space + self.offset) * self.scale * aspect_ratio_correction);
+                settings.fractal.cursor_shader_space(cursor_shader_space.unwrap());
             });
         }
 
         // packing
-        let aspect_ratio = painter.clip_rect().aspect_ratio();
         let mut packed_constants = [0u8;16];
-        packed_constants[0.. 4].copy_from_slice(&(self.scale * aspect_ratio).to_ne_bytes());
-        packed_constants[4.. 8].copy_from_slice(&self.scale.to_ne_bytes());
+        packed_constants[0.. 8].copy_from_slice(bytes_of(&(self.scale * aspect_ratio_correction)));
         packed_constants[8..16].copy_from_slice(bytes_of(&self.offset));
 
         // rendering
@@ -93,11 +99,12 @@ impl Visualizer {
             ),
         });
 
-        // overlay text
-        painter.debug_text(painter.clip_rect().left_bottom(),
-                           Align2::LEFT_BOTTOM,
-                           ui.style().visuals.strong_text_color(),
-                           format!("{self:?}"));
+        if settings.debug_label {
+            painter.debug_text(painter.clip_rect().left_bottom(),
+                               Align2::LEFT_BOTTOM,
+                               ui.style().visuals.strong_text_color(),
+                               format!("{self:?}, {cursor_shader_space:?}"));
+        }
     }
 }
 
