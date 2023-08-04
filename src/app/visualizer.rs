@@ -1,10 +1,11 @@
+use std::cell::OnceCell;
 use std::collections::{HashMap};
 use std::sync::{Arc};
 use bytemuck::bytes_of;
 use eframe::egui::{Align2, PaintCallback, Sense, Ui, Vec2, vec2};
 use eframe::egui_wgpu::CallbackFn;
-use eframe::wgpu::{ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexState};
-use type_map::concurrent::Entry::Vacant;
+use eframe::wgpu::{ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexState};
+use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBinding, BufferBindingType, BufferDescriptor, BufferUsages};
 use crate::app::settings::{Settings};
 use crate::fractal::FractalDiscriminants;
 use crate::wgsl::SHADERS;
@@ -13,29 +14,30 @@ use crate::wgsl::SHADERS;
 pub struct Visualizer {
     scale: f32,
     offset: Vec2,
+
+    texture_format: TextureFormat,
 }
 
 pub struct RenderData {
+    uniform_buffer: Buffer,
+    bind_group: BindGroup,
     pipelines: HashMap<FractalDiscriminants,RenderPipeline>,
 }
 
-pub const FRAGMENT_PUSH_CONSTANTS_SIZE: usize = 16;
+pub const UNIFORM_BUFFER_SIZE: u64 = 128;
 
 const ZOOM_FACTOR: f32 = 0.001;
 const DRAG_FACTOR: f32 = 0.003;
-//const WASD_FACTOR: f32 = 0.01;
-const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8Unorm;
-
-impl Default for Visualizer {
-    fn default() -> Self {
-        Self {
-            scale: 1.0,
-            offset: Vec2::ZERO,
-        }
-    }
-}
 
 impl Visualizer {
+    pub fn new(texture_format: TextureFormat) -> Self {
+        Self {
+            scale: 1.,
+            offset: Vec2::ZERO,
+            texture_format,
+        }
+    }
+
     pub fn ui(&mut self, settings: &mut Settings, ui: &mut Ui) {
         let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
 
@@ -65,33 +67,31 @@ impl Visualizer {
             });
         }
 
-        // packing
-        let mut packed_constants = [0u8;16];
-        packed_constants[0.. 8].copy_from_slice(bytes_of(&(self.scale * aspect_ratio_correction)));
-        packed_constants[8..16].copy_from_slice(bytes_of(&self.offset));
+        // preparing data for writing to the uniform buffer
+        let mut buffer_data = [0u8;UNIFORM_BUFFER_SIZE as usize];
+        buffer_data[0.. 8].copy_from_slice(bytes_of(&(self.scale * aspect_ratio_correction)));
+        buffer_data[8..16].copy_from_slice(bytes_of(&self.offset));
+        if let Some(fractal_buffer) = settings.fractal.uniform_buffer_data() {
+            buffer_data[16..fractal_buffer.len()+16].copy_from_slice(&fractal_buffer[..]);
+        }
 
         // rendering
         let fractal_d = FractalDiscriminants::from(&settings.fractal);
-        let fragment_push_constants = settings.fractal.push_constants();
+        let texture_format = self.texture_format;
         painter.add(PaintCallback {
             rect: painter.clip_rect(),
             callback: Arc::new(CallbackFn::default()
                 // as the expose-ids feature on wgpu is not activated, we'll just have to assume that the device remains constant
-                .prepare(move |device, _queue, _encoder, type_map| {
-                    if let Vacant(e) = type_map.entry::<RenderData>() {
-                        e.insert(RenderData::new(device));
-                    }
+                .prepare(move |device, queue, _encoder, type_map| {
+                    let data = type_map.entry::<RenderData>().or_insert_with(|| RenderData::new(device, texture_format));
+                    queue.write_buffer(&data.uniform_buffer, 0, &buffer_data);
                     vec![]
                 })
                 .paint(move |_info, pass, type_map| {
                     let Some(render_data) = type_map.get::<RenderData>() else {return};
 
                     pass.set_pipeline(render_data.pipelines.get(&fractal_d).unwrap());
-
-                    pass.set_push_constants(ShaderStages::VERTEX, 0, &packed_constants);
-                    if let Some(fragment_push_constants) = fragment_push_constants {
-                        pass.set_push_constants(ShaderStages::FRAGMENT, 16, bytes_of(&fragment_push_constants));
-                    }
+                    pass.set_bind_group(0, &render_data.bind_group, &[]);
 
                     // vertex coordinates are hardcoded in the shader so a vertex buffer is not needed
                     pass.draw(0..6, 0..1);
@@ -109,21 +109,42 @@ impl Visualizer {
 }
 
 impl RenderData {
-    pub fn new(device: &Device) -> Self {
+    pub fn new(device: &Device, texture_format: TextureFormat) -> Self {
+
+        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Visualizer bind group layout"),
+            entries: &[BindGroupLayoutEntry{
+                binding: 0,
+                visibility: ShaderStages::VERTEX_FRAGMENT,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let uniform_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Visualizer uniform buffer"),
+            size: UNIFORM_BUFFER_SIZE,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Visualizer bind group"),
+            layout: &bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: BindingResource::Buffer(uniform_buffer.as_entire_buffer_binding()),
+            }],
+        });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Visualizer layout"),
-            bind_group_layouts: &[],
-            push_constant_ranges: &[
-                PushConstantRange {
-                    stages: ShaderStages::VERTEX,
-                    range: 0..16, // zoom + offset
-                },
-                PushConstantRange {
-                    stages: ShaderStages::FRAGMENT,
-                    range: 16..(16+ FRAGMENT_PUSH_CONSTANTS_SIZE as u32),
-                }
-            ],
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
         });
 
         let pipelines = HashMap::from_iter(SHADERS.iter().map(|(kind, shader)| {
@@ -141,7 +162,7 @@ impl RenderData {
                     module: &shader_module,
                     entry_point: "fragment",
                     targets: &[Some(ColorTargetState{
-                        format: TEX_FORMAT,
+                        format: texture_format,
                         blend: None,
                         write_mask: ColorWrites::ALL,
                     })],
@@ -155,6 +176,8 @@ impl RenderData {
         }));
 
         Self {
+            uniform_buffer,
+            bind_group,
             pipelines,
         }
     }

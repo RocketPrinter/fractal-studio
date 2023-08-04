@@ -895,6 +895,7 @@ dependencies = [
  "strum",
  "type-map",
  "wasm-bindgen-futures",
+ "wgpu",
 ]
 
 [[package]]

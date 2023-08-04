@@ -6,32 +6,32 @@ use eframe::{App, CreationContext, egui};
 use crate::app::settings::Settings;
 use crate::app::visualizer::Visualizer;
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct EguiApp {
     settings: Settings,
-    #[serde(skip)]
-    settings_pinned: bool,
-    #[serde(skip)]
+    settings_floating: bool,
     visualizer: Visualizer,
 }
 
 impl EguiApp {
     pub fn new(cc: &CreationContext<'_>) -> Self {
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+        let settings: Settings = cc.storage.and_then(|storage| eframe::get_value(storage, eframe::APP_KEY)).unwrap_or_default();
+
+        EguiApp {
+            settings,
+            settings_floating: false,
+            visualizer: Visualizer::new(cc.wgpu_render_state.as_ref().unwrap().target_format ),
         }
 
-        Default::default()
     }
 }
 
 impl App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         //ctx.set_debug_on_hover(true);
-        if self.settings_pinned {
+        if self.settings_floating {
             Window::new("Visualizer")
                 .vscroll(true)
-                .open(&mut self.settings_pinned)
+                .open(&mut self.settings_floating)
                 .show(ctx, |ui| {
                     self.settings.ui(ui);
                 });
@@ -40,7 +40,7 @@ impl App for EguiApp {
                 ui.horizontal(|ui| {
                     ui.heading("Visualizer");
                     if Button::new("⏏").frame(false).ui(ui).clicked() {
-                        self.settings_pinned = true;
+                        self.settings_floating = true;
                     }
                 });
                 ui.separator();
@@ -59,6 +59,6 @@ impl App for EguiApp {
 
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
+        eframe::set_value(storage, eframe::APP_KEY, &self.settings);
     }
 }

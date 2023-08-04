@@ -45,16 +45,13 @@ fn main() {
 
 // copy pasted from default and modified
 fn device_descriptor() -> Arc<dyn Fn(&wgpu::Adapter) -> wgpu::DeviceDescriptor<'static>> {
-    Arc::new(|adapter| {
-        let mut base_limits = if adapter.get_info().backend == wgpu::Backend::Gl {
+    Arc::new(|_adapter| {
+        /*let base_limits = if adapter.get_info().backend == wgpu::Backend::Gl {
             wgpu::Limits::downlevel_webgl2_defaults()
         } else {
             wgpu::Limits::default()
-        };
-        // FOR SOME REASON THE LIMIT IS 0 BY DEFAULT EVEN IF YOU HAVE THE FEATURE ENABLED. WHYYYYYYY
-        // todo: migrate from push constants to uniform buffers because I had enough of this bs
-        base_limits.max_push_constant_size = 128;
-
+        };*/
+        let base_limits = wgpu::Limits::downlevel_webgl2_defaults();
         wgpu::DeviceDescriptor {
             label: Some("egui wgpu device"),
             features: wgpu::Features::default() | wgpu::Features::PUSH_CONSTANTS,

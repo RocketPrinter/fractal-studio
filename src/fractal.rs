@@ -1,8 +1,7 @@
 use bytemuck::bytes_of;
-use eframe::egui::{CollapsingHeader, CursorIcon, DragValue, Grid, Ui, Vec2, Widget};
+use eframe::egui::{CollapsingHeader, CursorIcon, DragValue, Ui, Vec2, Widget};
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
 use crate::app::settings::vec2_ui;
-use crate::app::visualizer::FRAGMENT_PUSH_CONSTANTS_SIZE;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, EnumDiscriminants)]
 #[strum_discriminants(derive(EnumIter, EnumMessage, Hash))]
@@ -102,19 +101,15 @@ impl Fractal {
         }
     }
 
-    pub fn push_constants(&self) -> Option<[u8; FRAGMENT_PUSH_CONSTANTS_SIZE]> {
+    pub fn uniform_buffer_data(&self) -> Option<Vec<u8>> {
         match self {
             Fractal::TestGrid => None,
-            Fractal::Mandelbrot { iterations } => {
-                let mut buffer = [0; FRAGMENT_PUSH_CONSTANTS_SIZE];
-                buffer[0..4].copy_from_slice(&iterations.to_ne_bytes());
-                Some(buffer)
-            },
+            Fractal::Mandelbrot { iterations } => Some(iterations.to_ne_bytes().into()),
             Fractal::Julia { iterations, c, ..} => {
                 // solving the escape radius aka R
                 // choose R > 0 such that R**2 - R >= sqrt(cx**2 + cy**2)
                 let r = (1. + (1. + 4. * c.length()).sqrt()) / 2.;
-                let mut buffer = [0; FRAGMENT_PUSH_CONSTANTS_SIZE];
+                let mut buffer = vec![0; 16];
                 buffer[0..4].copy_from_slice(&iterations.to_ne_bytes());
                 buffer[4..8].copy_from_slice(&r.to_ne_bytes());
                 buffer[8..16].copy_from_slice(bytes_of(c));

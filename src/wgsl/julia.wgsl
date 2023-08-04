@@ -21,7 +21,8 @@ var<private> v_positions: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
     vec2<f32>( 1.,-1.),
 );
 
-var<push_constant> constants: Constants;
+@group(0) @binding(0)
+var<uniform> constants: Constants;
 
 @vertex
 fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {

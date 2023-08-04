@@ -4,10 +4,13 @@ struct VertexOut {
 };
 
 struct Constants {
-    scale: vec2<f32>,
-    offset: vec2<f32>,
+    scale: vec2<f32>, // 0..8
+    offset: vec2<f32>, // 8..16
 
-    iterations: u32,
+    @size(4)
+    iterations: u32, // 16..20
+
+    _padding: vec3<f32>, // 20..32
 }
 
 var<private> v_positions: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
@@ -19,7 +22,8 @@ var<private> v_positions: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
     vec2<f32>( 1.,-1.),
 );
 
-var<push_constant> constants: Constants;
+@group(0) @binding(0)
+var<uniform> constants: Constants;
 
 @vertex
 fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
