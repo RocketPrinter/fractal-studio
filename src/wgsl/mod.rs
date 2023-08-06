@@ -6,9 +6,10 @@ use crate::fractal::FractalDiscriminants::*;
 pub type Smd = ShaderModuleDescriptor<'static>;
 
 lazy_static!{
-    pub static ref SHADERS: [(FractalDiscriminants, Smd);3] = [
+    pub static ref SHADERS: [(FractalDiscriminants, Smd);4] = [
         (TestGrid,include_wgsl!("test_grid.wgsl")),
         (Mandelbrot,include_wgsl!("mandelbrot.wgsl")),
         (Julia,include_wgsl!("julia.wgsl")),
+        (Netwtons,include_wgsl!("newtons.wgsl")),
     ];
 }

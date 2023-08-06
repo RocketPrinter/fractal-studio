@@ -1,5 +1,6 @@
 pub mod settings;
 pub mod visualizer;
+pub mod widgets;
 
 use eframe::egui::{Button, CentralPanel, Frame, SidePanel, Widget, Window};
 use eframe::{App, CreationContext, egui};
@@ -27,27 +28,7 @@ impl EguiApp {
 
 impl App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        //ctx.set_debug_on_hover(true);
-        if self.settings_floating {
-            Window::new("Visualizer")
-                .vscroll(true)
-                .open(&mut self.settings_floating)
-                .show(ctx, |ui| {
-                    self.settings.ui(ui);
-                });
-        } else {
-            SidePanel::right("settings_panel").show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.heading("Visualizer");
-                    if Button::new("⏏").frame(false).ui(ui).clicked() {
-                        self.settings_floating = true;
-                    }
-                });
-                ui.separator();
-                self.settings.ui(ui);
-
-            });
-        }
+        self.settings.ctx(ctx);
 
         CentralPanel::default()
             // remove margin and background

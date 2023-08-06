@@ -1,11 +1,10 @@
-use std::cell::OnceCell;
 use std::collections::{HashMap};
 use std::sync::{Arc};
 use bytemuck::bytes_of;
 use eframe::egui::{Align2, PaintCallback, Sense, Ui, Vec2, vec2};
 use eframe::egui_wgpu::CallbackFn;
 use eframe::wgpu::{ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexState};
-use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBinding, BufferBindingType, BufferDescriptor, BufferUsages};
+use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages};
 use crate::app::settings::{Settings};
 use crate::fractal::FractalDiscriminants;
 use crate::wgsl::SHADERS;

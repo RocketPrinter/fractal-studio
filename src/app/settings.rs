@@ -1,5 +1,5 @@
-use std::ops::RangeInclusive;
-use eframe::egui::{ComboBox, DragValue, Ui, Vec2, Widget};
+use eframe::egui;
+use eframe::egui::{Button, ComboBox, DragValue, RichText, SidePanel, Ui, Vec2, Widget, Window};
 use strum::{EnumMessage, IntoEnumIterator};
 use crate::fractal::{Fractal, FractalDiscriminants};
 
@@ -7,6 +7,8 @@ use crate::fractal::{Fractal, FractalDiscriminants};
 pub struct Settings {
     pub fractal: Fractal,
     pub debug_label: bool,
+    #[serde(skip)]
+    pub floating: bool,
 }
 
 impl Default for Settings {
@@ -14,12 +16,38 @@ impl Default for Settings {
         Self {
             fractal: Default::default(),
             debug_label: true,
+            floating: false,
         }
     }
 }
 
 impl Settings {
-    pub fn ui(&mut self, ui: &mut Ui) {
+    pub fn ctx(&mut self, ctx: &egui::Context) {
+        if self.floating {
+            let mut floating = self.floating;
+            Window::new("Fractals")
+                .vscroll(true)
+                .open(&mut floating)
+                .show(ctx, |ui| {
+                    self.ui(ui);
+                });
+            self.floating = floating;
+        } else {
+            SidePanel::right("settings_panel").show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.heading("Fractals");
+                    if Button::new("⏏").frame(false).ui(ui).clicked() {
+                        self.floating = true;
+                    }
+                });
+                ui.separator();
+                self.ui(ui);
+
+            });
+        }
+    }
+
+    fn ui(&mut self, ui: &mut Ui) {
         let fractal_d = FractalDiscriminants::from(&self.fractal);
         ComboBox::from_id_source("Fractal selector")
             .selected_text(fractal_d.get_documentation().unwrap_or_default())
@@ -35,29 +63,16 @@ impl Settings {
 
         ui.separator();
         ui.checkbox(&mut self.debug_label, "Debug label");
-    }
-}
 
-pub fn vec2_ui(ui: &mut Ui, v: &mut Vec2, complex: bool, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) {
-    ui.horizontal(|ui| {
-        let mut x = DragValue::new(&mut v.x);
-        let mut y = DragValue::new(&mut v.y);
-        if complex {
-            y = y.suffix("i");
-        } else {
-            x = x.prefix("x=");
-            y = y.prefix("y=");
-        }
-        if let Some(speed) = speed {
-            x = x.speed(speed);
-            y = y.speed(speed);
-        }
-        if let Some(clamp_range) = clamp_range {
-            x = x.clamp_range(clamp_range.clone());
-            y = y.clamp_range(clamp_range);
-        }
-        x.ui(ui);
-        ui.add_space(-6.);
-        y.ui(ui);
-    });
+        ui.horizontal_wrapped(|ui|{
+            ui.spacing_mut().item_spacing.x = 0.0;
+            ui.label("Powered by ");
+            ui.hyperlink_to("egui ","https://www.egui.rs/");
+            ui.label("and ");
+            ui.hyperlink_to("wgpu", "https://wgpu.rs/");
+            ui.label(". Check the source on ");
+            ui.hyperlink_to(" Github","todo");
+            ui.label(".")
+        });
+    }
 }

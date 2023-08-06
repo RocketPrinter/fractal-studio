@@ -882,15 +882,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_extras"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9278f4337b526f0d57e5375e5a7340a311fa6ee8f9fcc75721ac50af13face02"
+dependencies = [
+ "egui",
+ "serde",
+]
+
+[[package]]
 name = "egui_wasm_visualizer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytemuck",
  "eframe",
+ "egui_extras",
  "env_logger",
  "lazy_static",
  "log",
+ "num-complex",
+ "rand",
  "serde",
  "strum",
  "type-map",
@@ -1650,6 +1663,16 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "num-complex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02e0d21255c828d6f128a1e41534206671e8c3ea0c62f32291e808dc82cff17d"
+dependencies = [
+ "bytemuck",
+ "num-traits",
 ]
 
 [[package]]
