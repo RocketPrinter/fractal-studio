@@ -5,9 +5,9 @@ use num_complex::Complex32;
 use num_traits::One;
 use rand::Rng;
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
-use crate::app::visualizer::UNIFORM_BUFFER_SIZE;
-use crate::app::widgets::{vec2_ui, vec2_ui_full};
+use crate::app::widgets::{vec2_ui_full};
 
+// todo: allow exporting config to a sharable link
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, EnumDiscriminants)]
 #[strum_discriminants(derive(EnumIter, EnumMessage, Hash))]
 pub enum Fractal {
@@ -25,11 +25,8 @@ pub enum Fractal {
     },
     /// Newton's fractal
     Netwtons {
+        // todo: add a threshold for black pixels and arguments a and c from the wiki page
         iterations: u32,
-        // extra parameters
-        // z = z - a * (f/f') + c
-        //a: Vec2,
-        //c: Vec2,
         /// 1..=5 roots
         roots: Vec<Vec2>,
         /// u32 is the index of the root being picked
@@ -49,7 +46,7 @@ impl Fractal {
             FractalDiscriminants::TestGrid => Fractal::TestGrid,
             FractalDiscriminants::Mandelbrot => Fractal::Mandelbrot { iterations: 300 },
             FractalDiscriminants::Julia => Fractal::Julia { iterations: 100, c: Vec2::new(-0.76,-0.15), pick_using_cursor: false, animating_on_circle: false },
-            FractalDiscriminants::Netwtons => Fractal::Netwtons { iterations: 10, roots: vec![vec2(1.,0.),vec2(-0.5,0.866),vec2(-0.5, -0.866)], pick_using_cursor: None},
+            FractalDiscriminants::Netwtons => Fractal::Netwtons { iterations: 50, roots: vec![vec2(1., 0.), vec2(-0.5, 0.866), vec2(-0.5, -0.866)], pick_using_cursor: None},
         }
     }
 
@@ -100,13 +97,13 @@ impl Fractal {
                 if pick_using_cursor.is_some() {
                     ui.ctx().set_cursor_icon(CursorIcon::Crosshair);
                     if ui.input(|input| input.pointer.any_down()) { *pick_using_cursor = None; }
-                }
+                };
 
                 ui.horizontal(|ui|{
                     ui.label("Roots");
                     if ui.add_enabled(roots.len() < 5, Button::new("+").small().min_size(vec2(15.,0.))).clicked() {
                         let mut rand = rand::thread_rng();
-                        roots.push(vec2(rand.gen::<f32>() * 2. - 1., rand.gen::<f32>() * 2. - 1.));
+                        roots.push(vec2(rand.gen::<f32>() * 2. - 1., rand.gen::<f32>() * 2. - 1.)) ;
                     }
                     if ui.add_enabled(roots.len() > 2, Button::new("-").small().min_size(vec2(15.,0.))).clicked() {
                         roots.pop();

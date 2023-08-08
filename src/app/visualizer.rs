@@ -52,7 +52,7 @@ impl Visualizer {
                 cursor_clip_space.y *= -1.;
 
                 let mut new_scale = self.scale * (1. + input.scroll_delta.y * ZOOM_FACTOR);
-                new_scale = new_scale.clamp(0.0000000001, 100.); // prevent zoom from becoming 0 or inf
+                new_scale = new_scale.clamp(0.0000000001, 10000.); // prevent zoom from becoming 0 or inf
                 let delta_scale = self.scale / new_scale;
                 // rescale to make zooming centered on the screen
                 self.offset *= delta_scale;

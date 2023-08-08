@@ -12,6 +12,7 @@ struct Constants {
     max_iterations: u32,//116..120
     //a: vec2<f32>,
     //c: vec2<f32>,
+    _padding: vec2<f32>,
 }
 // array elements must have a size of 16 so we interweave the roots and polynomial constant arraysa
 struct Element {
@@ -101,6 +102,6 @@ fn csq(z: vec2<f32>) -> vec2<f32> {
 fn cdiv(a: vec2<f32>, b: vec2<f32>) -> vec2<f32> {
     let norm_sqr = b.x * b.x + b.y * b.y;
     let re = a.x * b.x + a.y * b.y;
-    let im = a.y * a.x - a.x * b.y;
+    let im = a.y * b.x - a.x * b.y;
     return vec2(re / norm_sqr, im / norm_sqr);
 }
