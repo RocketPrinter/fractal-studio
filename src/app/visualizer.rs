@@ -23,7 +23,7 @@ pub struct RenderData {
     pipelines: HashMap<FractalDiscriminants,RenderPipeline>,
 }
 
-pub const UNIFORM_BUFFER_SIZE: u64 = 128;
+pub const UNIFORM_BUFFER_SIZE: u64 = 132;
 
 const ZOOM_FACTOR: f32 = 0.001;
 const DRAG_FACTOR: f32 = 0.003;
@@ -70,9 +70,7 @@ impl Visualizer {
         let mut buffer_data = [0u8;UNIFORM_BUFFER_SIZE as usize];
         buffer_data[0.. 8].copy_from_slice(bytes_of(&(self.scale * aspect_ratio_correction)));
         buffer_data[8..16].copy_from_slice(bytes_of(&self.offset));
-        if let Some(fractal_buffer) = settings.fractal.uniform_buffer_data() {
-            buffer_data[16..fractal_buffer.len()+16].copy_from_slice(&fractal_buffer[..]);
-        }
+        settings.fractal.fill_uniform_buffer(&mut buffer_data);
 
         // rendering
         let fractal_d = FractalDiscriminants::from(&settings.fractal);

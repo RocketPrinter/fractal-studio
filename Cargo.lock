@@ -903,6 +903,7 @@ dependencies = [
  "lazy_static",
  "log",
  "num-complex",
+ "num-traits",
  "rand",
  "serde",
  "strum",

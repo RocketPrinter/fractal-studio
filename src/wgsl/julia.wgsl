@@ -7,7 +7,7 @@ struct Constants {
     scale: vec2<f32>,
     offset: vec2<f32>,
 
-    iterations: u32,
+    max_iterations: u32,
     r: f32, // escape radius (choose R > 0 such that R**2 - R >= sqrt(cx**2 + cy**2))
     c: vec2<f32>,
 }
@@ -35,17 +35,17 @@ fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 // https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set
 @fragment
 fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
-    let iterations = calc_iterations(in.uv);
-    return vec4<f32>(vec3<f32>(f32(iterations) / f32(constants.iterations)), 1.0);
+    let iterations = compute_iterations(in.uv);
+    return vec4(vec3(f32(iterations) / f32(constants.max_iterations)), 1.0);
 }
 
 // https://en.wikipedia.org/wiki/Julia_set#Pseudocode
-fn calc_iterations(z: vec2<f32>) -> u32 {
+fn compute_iterations(z: vec2<f32>) -> u32 {
     var iterations = 0u;
     var z = z;
     var z2 = vec2(z.x * z.x, z.y * z.y); // containts z.x^2 and z.y^2 not the square of the complex number
     let r_sq = constants.r * constants.r;
-    while (z2.x + z2.y < r_sq  && iterations < constants.iterations) {
+    while (z2.x + z2.y < r_sq  && iterations < constants.max_iterations) {
         z = vec2(z2.x - z2.y + constants.c.x, 2. * z.x * z.y + constants.c.y);
         z2 = vec2(z.x * z.x, z.y * z.y);
         iterations++;

@@ -7,9 +7,7 @@ struct Constants {
     scale: vec2<f32>, // 0..8
     offset: vec2<f32>, // 8..16
 
-    @size(4)
-    iterations: u32, // 16..20
-
+    max_iterations: u32, // 16..20
     _padding: vec3<f32>, // 20..32
 }
 
@@ -36,17 +34,17 @@ fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 // https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set
 @fragment
 fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
-    let iterations = calc_iterations(in.uv);
-    return vec4(vec3(f32(iterations - 1u) / f32(constants.iterations - 1u)), 1.0);
+    let iterations = compute_iterations(in.uv);
+    return vec4(vec3(f32(iterations - 1u) / f32(constants.max_iterations - 1u)), 1.0);
 }
 
 
-fn calc_iterations(p0: vec2<f32>) -> u32 {
+fn compute_iterations(p0: vec2<f32>) -> u32 {
     var iterations = 0u;
     var p = vec2<f32>();
     var p2 = vec2<f32>();
     var w = 0.;
-    while p2.x + p2.y <= 4. && iterations < constants.iterations {
+    while p2.x + p2.y <= 4. && iterations < constants.max_iterations {
         p.x = p2.x - p2.y + p0.x;
         p.y = w - p2.x - p2.y + p0.y;
         p2 = p * p;

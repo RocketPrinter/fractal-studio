@@ -16,6 +16,7 @@ type-map = "*"
 strum = { version = "0.25", features = ["derive"] }
 bytemuck = "1.13.1"
 num-complex = { version = "0.4.3", features = ["bytemuck"]}
+num-traits = "*"
 rand = "0.8.5"
 egui_extras = "0.22.0"
 

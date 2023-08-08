@@ -1,8 +1,11 @@
 use bytemuck::bytes_of;
 use eframe::egui::{Button, CollapsingHeader, CursorIcon, DragValue, Grid, Ui, Vec2, vec2, Widget};
 use egui_extras::{Size, StripBuilder};
+use num_complex::Complex32;
+use num_traits::One;
 use rand::Rng;
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
+use crate::app::visualizer::UNIFORM_BUFFER_SIZE;
 use crate::app::widgets::{vec2_ui, vec2_ui_full};
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, EnumDiscriminants)]
@@ -12,6 +15,7 @@ pub enum Fractal {
     TestGrid,
     /// Mandelbrot Set
     Mandelbrot { iterations: u32 },
+    // todo: add option to draw path of point
     /// Julia Set
     Julia {
         iterations: u32,
@@ -41,7 +45,7 @@ impl Fractal {
             FractalDiscriminants::TestGrid => Fractal::TestGrid,
             FractalDiscriminants::Mandelbrot => Fractal::Mandelbrot { iterations: 300 },
             FractalDiscriminants::Julia => Fractal::Julia { iterations: 100, c: Vec2::new(-0.76,-0.15), pick_using_cursor: false, animating_on_circle: false },
-            FractalDiscriminants::Netwtons => Fractal::Netwtons { iterations: 100, roots: vec![vec2(1.,0.),vec2(-0.5,0.866),vec2(-0.5, -0.866)], pick_using_cursor: None},
+            FractalDiscriminants::Netwtons => Fractal::Netwtons { iterations: 10, roots: vec![vec2(1.,0.),vec2(-0.5,0.866),vec2(-0.5, -0.866)], pick_using_cursor: None},
         }
     }
 
@@ -69,9 +73,11 @@ impl Fractal {
                     }
                 }
 
-                if vec2_ui_full(ui, "c", c, true, Some(0.02), None) {
-                    *pick_using_cursor = true;
-                }
+                ui.horizontal(|ui|{
+                    if vec2_ui_full(ui, "c", c, true, Some(0.02), None) {
+                        *pick_using_cursor = true;
+                    }
+                });
 
                 if *animating_on_circle {
                     *animating_on_circle = !ui.button("Stop").clicked();
@@ -148,24 +154,54 @@ impl Fractal {
         }
     }
 
-    pub fn uniform_buffer_data(&self) -> Option<Vec<u8>> {
+    pub fn fill_uniform_buffer(&self, buffer: &mut [u8]) {
         match self {
-            Fractal::TestGrid => None,
-            Fractal::Mandelbrot { iterations } => Some(iterations.to_ne_bytes().into()),
+            Fractal::TestGrid => (),
+            Fractal::Mandelbrot { iterations } => buffer[16..20].copy_from_slice(&iterations.to_ne_bytes()),
             Fractal::Julia { iterations, c, ..} => {
                 // solving the escape radius aka R
                 // choose R > 0 such that R**2 - R >= sqrt(cx**2 + cy**2)
                 let r = (1. + (1. + 4. * c.length()).sqrt()) / 2.;
-                let mut buffer = vec![0; 16];
-                buffer[0..4].copy_from_slice(&iterations.to_ne_bytes());
-                buffer[4..8].copy_from_slice(&r.to_ne_bytes());
-                buffer[8..16].copy_from_slice(bytes_of(c));
-                Some(buffer)
+                buffer[16..20].copy_from_slice(&iterations.to_ne_bytes());
+                buffer[20..24].copy_from_slice(&r.to_ne_bytes());
+                buffer[24..32].copy_from_slice(bytes_of(c));
             },
-            Fractal::Netwtons { .. } => {
-                None // todo
+            Fractal::Netwtons { iterations, roots, .. } => {
+                let mut polynomial_coef = [Complex32::default();6];
+                polynomial_coef[0] = Complex32::one();
+                for (i,root) in roots.iter().enumerate() {
+                    let root = Complex32::new(root.x,root.y);
+                    for j in (0..=i+1).rev() {
+                        if j == 0 {
+                            polynomial_coef[j] = - root * polynomial_coef[j];
+                        } else {
+                            polynomial_coef[j] = polynomial_coef[j-1] - root * polynomial_coef[j];
+                        }
+                    }
+                }
+                let interweaved_arrays = roots.iter().chain([Vec2::ZERO].iter())
+                    .zip(polynomial_coef);
+                let mut offset = 16;
+                for (root, coefficients) in interweaved_arrays {
+                    buffer[offset..offset+8].copy_from_slice(bytes_of(root));
+                    offset+=8;
+                    buffer[offset..offset+8].copy_from_slice(bytes_of(&coefficients));
+                    offset+=8;
+                }
+                buffer[112..116].copy_from_slice(&(roots.len() as u32).to_ne_bytes());
+                buffer[116..120].copy_from_slice(&iterations.to_ne_bytes());
             },
         }
     }
 }
 
+/*
+(x-r1)(x-r2)(x-r3)(x-r4)(x-r5)
+
+x - r1
+x^2 - x (r1 + r2) + r1 r2
+x^3 - x^2 (r1 + r2 + r3) + x r1 r2
+
+
+
+*/
