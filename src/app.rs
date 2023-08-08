@@ -9,7 +9,6 @@ use crate::app::visualizer::Visualizer;
 
 pub struct EguiApp {
     settings: Settings,
-    settings_floating: bool,
     visualizer: Visualizer,
 }
 
@@ -19,7 +18,6 @@ impl EguiApp {
 
         EguiApp {
             settings,
-            settings_floating: false,
             visualizer: Visualizer::new(cc.wgpu_render_state.as_ref().unwrap().target_format ),
         }
 

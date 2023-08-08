@@ -1,6 +1,6 @@
 {
-  "name": "Egui Wasm Visualizer",
-  "short_name": "egui-wasm-visualizer",
+  "name": "Fractal Visualizer",
+  "short_name": "fractal_visualizer",
   "icons": [
     {
       "src": "./icon-256.png",

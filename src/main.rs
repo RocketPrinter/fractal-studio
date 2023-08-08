@@ -15,7 +15,7 @@ fn main() -> eframe::Result<()> {
     let mut native_options = eframe::NativeOptions::default();
     native_options.wgpu_options.device_descriptor = device_descriptor();
     eframe::run_native(
-        "Visualizer",
+        "Fractal Visualizer",
         native_options,
         Box::new(|cc| Box::new(app::EguiApp::new(cc))),
     )

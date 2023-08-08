@@ -2,8 +2,8 @@ var cacheName = 'egui-wasm-visualizer-paw';
 var filesToCache = [
   './',
   './index.html',
-  './egui_wasm_visualizer.js',
-  './egui_wasm_visualizer_bg.wasm',
+  './fractal_visualizer.js',
+  './fractal_visualizer_bg.wasm',
 ];
 
 /* Start the service worker and cache all of the app's content */

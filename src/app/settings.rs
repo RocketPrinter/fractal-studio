@@ -71,7 +71,7 @@ impl Settings {
             ui.label("and ");
             ui.hyperlink_to("wgpu", "https://wgpu.rs/");
             ui.label(". Check the source on ");
-            ui.hyperlink_to(" Github","todo");
+            ui.hyperlink_to(" Github","https://github.com/RocketPrinter/fractal_visualizer");
             ui.label(".")
         });
     }
