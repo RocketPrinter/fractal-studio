@@ -26,6 +26,10 @@ pub enum Fractal {
     /// Newton's fractal
     Netwtons {
         iterations: u32,
+        // extra parameters
+        // z = z - a * (f/f') + c
+        //a: Vec2,
+        //c: Vec2,
         /// 1..=5 roots
         roots: Vec<Vec2>,
         /// u32 is the index of the root being picked

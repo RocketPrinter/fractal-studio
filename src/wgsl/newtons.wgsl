@@ -58,9 +58,9 @@ fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
     return root_colors[root];
 }
 
-// https://en.wikipedia.org/wiki/Julia_set#Pseudocode
+// https://en.wikipedia.org/wiki/Newton_fractal#Implementation
 // will return -1 if it's not close enough to any of the roots and the root index otherwise
-const treshold = 1000.;
+const treshold = 99999999.;
 fn newtons_method(z: vec2<f32>) -> i32 {
     var z = z;
     for(var iteration = 0u; iteration < constants.max_iterations; iteration++) {
@@ -70,8 +70,8 @@ fn newtons_method(z: vec2<f32>) -> i32 {
         var fd = vec2<f32>();
         for (var i=0;i<=5;i++) {
             let coef = constants.arr[i].coefficient;
-            f += coef * zp;
-            fd += coef * prev * f32(i);
+            f += cmul(coef, zp);
+            fd += cmul(coef, prev) * f32(i);
             prev = zp;
             zp = cmul(zp, z);
         }
