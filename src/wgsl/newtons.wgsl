@@ -8,11 +8,11 @@ struct Constants {
     offset: vec2<f32>,//8..16
 
     arr: array<Element, 6>,//16..112
-    nr_roots: u32,//112..116
-    max_iterations: u32,//116..120
-    //a: vec2<f32>,
-    //c: vec2<f32>,
-    _padding: vec2<f32>,
+    a: vec2<f32>,//112..120
+    c: vec2<f32>,//120..128
+    nr_roots: u32,//128..132
+    max_iterations: u32,//132..136
+    _padding: vec2<f32>,//136..144
 }
 // array elements must have a size of 16 so we interweave the roots and polynomial constant arraysa
 struct Element {
@@ -74,7 +74,7 @@ fn newtons_method(z: vec2<f32>) -> i32 {
             f += cmul(coef, zp);
             fd += cmul(coef, prev) * f32(i);
             prev = zp;
-            zp = cmul(zp, z);
+            zp = cmul(cmul(constants.a,zp), z) + constants.c;
         }
         z = z - cdiv(f,fd);
     }

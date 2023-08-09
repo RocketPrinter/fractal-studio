@@ -31,6 +31,10 @@ pub enum Fractal {
         roots: Vec<Vec2>,
         /// u32 is the index of the root being picked
         pick_using_cursor: Option<u32>,
+        // extra parameters
+        a: Vec2,
+        c: Vec2,
+
     }
 }
 
@@ -46,7 +50,13 @@ impl Fractal {
             FractalDiscriminants::TestGrid => Fractal::TestGrid,
             FractalDiscriminants::Mandelbrot => Fractal::Mandelbrot { iterations: 300 },
             FractalDiscriminants::Julia => Fractal::Julia { iterations: 100, c: Vec2::new(-0.76,-0.15), pick_using_cursor: false, animating_on_circle: false },
-            FractalDiscriminants::Netwtons => Fractal::Netwtons { iterations: 50, roots: vec![vec2(1., 0.), vec2(-0.5, 0.866), vec2(-0.5, -0.866)], pick_using_cursor: None},
+            FractalDiscriminants::Netwtons => Fractal::Netwtons {
+                iterations: 50,
+                roots: vec![vec2(1., 0.), vec2(-0.5, 0.866), vec2(-0.5, -0.866)],
+                pick_using_cursor: None,
+                a: Vec2::new(1., 0.),
+                c: Vec2::ZERO,
+            },
         }
     }
 
@@ -88,7 +98,7 @@ impl Fractal {
                     * animating_on_circle = ui.button("Animate on circle").clicked();
                 }
             },
-            Fractal::Netwtons { iterations, roots, pick_using_cursor } => {
+            Fractal::Netwtons { iterations, roots, pick_using_cursor, a, c } => {
                 ui.horizontal(|ui|{
                     ui.label("Iterations");
                     DragValue::new(iterations).speed(1).clamp_range(0..=3000).ui(ui);
@@ -118,6 +128,21 @@ impl Fractal {
                     }
                 });
                 // todo: when mouse is over any part of the roots grid show visualize location
+
+                CollapsingHeader::new("Extra parameters").show(ui, |ui| {
+                    ui.horizontal(|ui|{
+                        ui.label("a");
+                        if vec2_ui_full(ui, "", a, true, Some(0.02), None) {
+                            *pick_using_cursor = Some(5); //todo: hack
+                        }
+                    });
+                    ui.horizontal(|ui|{
+                        ui.label("c");
+                        if vec2_ui_full(ui, "", c, true, Some(0.02), None) {
+                            *pick_using_cursor = Some(6); //todo: hack
+                        }
+                    });
+                });
             },
         }
 
@@ -146,7 +171,17 @@ impl Fractal {
             Fractal::Julia { c, pick_using_cursor, .. } if *pick_using_cursor => {
                 *c = pos;
             },
-            Fractal::Netwtons { roots, pick_using_cursor: Some(root_index), .. } => {
+            Fractal::Netwtons { roots, pick_using_cursor: Some(root_index), a, c, .. } => {
+                match root_index {
+                    0..=4 =>
+                        if let Some(root) = roots.get_mut(*root_index as usize) {
+                            *root = pos;
+                        },
+                    5 => *a = pos,
+                    6 => *c = pos,
+                    _ => (),
+                }
+
                 if let Some(root) = roots.get_mut(*root_index as usize) {
                     *root = pos;
                 }
@@ -167,7 +202,7 @@ impl Fractal {
                 buffer[20..24].copy_from_slice(&r.to_ne_bytes());
                 buffer[24..32].copy_from_slice(bytes_of(c));
             },
-            Fractal::Netwtons { iterations, roots, .. } => {
+            Fractal::Netwtons { iterations, roots, a, c, .. } => {
                 let mut polynomial_coef = [Complex32::default();6];
                 polynomial_coef[0] = Complex32::one();
                 for (i,root) in roots.iter().enumerate() {
@@ -189,8 +224,10 @@ impl Fractal {
                     buffer[offset..offset+8].copy_from_slice(bytes_of(&coefficients));
                     offset+=8;
                 }
-                buffer[112..116].copy_from_slice(&(roots.len() as u32).to_ne_bytes());
-                buffer[116..120].copy_from_slice(&iterations.to_ne_bytes());
+                buffer[112..120].copy_from_slice(bytes_of(a));
+                buffer[120..128].copy_from_slice(bytes_of(c));
+                buffer[128..132].copy_from_slice(&(roots.len() as u32).to_ne_bytes());
+                buffer[132..136].copy_from_slice(&iterations.to_ne_bytes());
             },
         }
     }

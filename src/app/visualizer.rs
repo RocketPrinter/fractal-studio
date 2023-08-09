@@ -23,7 +23,7 @@ pub struct RenderData {
     pipelines: HashMap<FractalDiscriminants,RenderPipeline>,
 }
 
-pub const UNIFORM_BUFFER_SIZE: u64 = 132;
+pub const UNIFORM_BUFFER_SIZE: u64 = 144;
 
 const ZOOM_FACTOR: f32 = 0.001;
 const DRAG_FACTOR: f32 = 0.003;
@@ -100,7 +100,7 @@ impl Visualizer {
             painter.debug_text(painter.clip_rect().left_bottom(),
                                Align2::LEFT_BOTTOM,
                                ui.style().visuals.strong_text_color(),
-                               format!("{self:?}, {cursor_shader_space:?}"));
+                               format!("scale:{}, offset:{:?}, cursor:{cursor_shader_space:?}", self.scale, self.offset));
         }
     }
 }
