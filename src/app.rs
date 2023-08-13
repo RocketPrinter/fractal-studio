@@ -1,15 +1,21 @@
 pub mod settings;
 pub mod visualizer;
 pub mod widgets;
+pub mod library;
 
-use eframe::egui::{Button, CentralPanel, Frame, SidePanel, Widget, Window};
+use std::sync::Arc;
+use eframe::egui::{CentralPanel, Frame, Id};
 use eframe::{App, CreationContext, egui};
+use log::error;
 use crate::app::settings::Settings;
 use crate::app::visualizer::Visualizer;
+use crate::fractal::Fractal;
 
 pub struct EguiApp {
     settings: Settings,
     visualizer: Visualizer,
+
+    set_info: bool,
 }
 
 impl EguiApp {
@@ -19,13 +25,34 @@ impl EguiApp {
         EguiApp {
             settings,
             visualizer: Visualizer::new(cc.wgpu_render_state.as_ref().unwrap().target_format ),
+
+            set_info: false,
         }
 
     }
 }
 
 impl App for EguiApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        // used for later accessing the url
+        if !self.set_info {
+            self.set_info = true;
+            let info = Arc::new(frame.info());
+            ctx.data_mut(|data| data.insert_temp(Id::new("integration_info"), info.clone()));
+
+            // if we're running in web try loading the fractal from the url
+            #[cfg(target_arch = "wasm32")]
+            {
+                if let Some(code) = info.web_info.location.query_map.get("fractal") {
+                    match Fractal::from_code(code) {
+                        Ok(fractal) => self.settings.fractal = fractal,
+                        Err(e) => error!("Failed to load fractal from url: {}", e),
+                    }
+                }
+            }
+        }
+
         self.settings.ctx(ctx);
 
         CentralPanel::default()

@@ -25,12 +25,9 @@ fn main() -> eframe::Result<()> {
 #[cfg(target_arch = "wasm32")]
 fn main() {
     // Redirect `log` message to `console.log` and friends:
-    eframe::WebLogger::init(log::LevelFilter::Debug).ok();
+    eframe::WebLogger::init(log::LevelFilter::Info).ok();
 
     let mut web_options = eframe::WebOptions::default();
-    // disallow WebGPU as it doesn't support Push Constants
-    //web_options.wgpu_options.supported_backends &= !eframe::wgpu::Backends::BROWSER_WEBGPU;
-    //web_options.wgpu_options.device_descriptor = device_descriptor();
     wasm_bindgen_futures::spawn_local(async {
         eframe::WebRunner::new()
             .start(
@@ -46,16 +43,10 @@ fn main() {
 // copy pasted from default and modified
 fn device_descriptor() -> Arc<dyn Fn(&wgpu::Adapter) -> wgpu::DeviceDescriptor<'static>> {
     Arc::new(|_adapter| {
-        /*let base_limits = if adapter.get_info().backend == wgpu::Backend::Gl {
-            wgpu::Limits::downlevel_webgl2_defaults()
-        } else {
-            wgpu::Limits::default()
-        };*/
-        let base_limits = wgpu::Limits::downlevel_webgl2_defaults();
         wgpu::DeviceDescriptor {
             label: Some("egui wgpu device"),
-            features: wgpu::Features::default() | wgpu::Features::PUSH_CONSTANTS,
-            limits: base_limits,
+            features: wgpu::Features::default(),
+            limits: wgpu::Limits::downlevel_webgl2_defaults(),
         }
     })
 }

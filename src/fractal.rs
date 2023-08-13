@@ -1,11 +1,13 @@
 use bytemuck::bytes_of;
-use eframe::egui::{Button, CollapsingHeader, CursorIcon, DragValue, Grid, Ui, Vec2, vec2, Widget};
-use egui_extras::{Size, StripBuilder};
+use eframe::egui::{Button, CollapsingHeader, Context, CursorIcon, DragValue, Grid, Id, Painter, Ui, Vec2, vec2, Widget};
 use num_complex::Complex32;
 use num_traits::One;
 use rand::Rng;
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
 use crate::app::widgets::{vec2_ui_full};
+use anyhow::{anyhow, bail, Result};
+use base64::prelude::*;
+use url::Url;
 
 // todo: allow exporting config to a sharable link
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, EnumDiscriminants)]
@@ -231,15 +233,52 @@ impl Fractal {
             },
         }
     }
+
+    pub fn to_code(&self) -> Result<String> {
+        let serialized_code = rmp_serde::to_vec_named(self)?;
+        Ok(BASE64_URL_SAFE.encode(serialized_code))
+    }
+
+    pub fn to_link(&self, _ctx: &Context) -> Result<String> {
+        // if on native, hardcode the url
+        #[cfg(not(target_arch = "wasm32"))]
+        let mut url = "https://rocketprinter.github.io/fractal_visualizer?fractal=".to_string();
+
+        //uses "integration_info" data to get the integration info, which should be set in app.rs
+        #[cfg(target_arch = "wasm32")]
+        let mut url = {
+            let Some(integration_info) = _ctx.data(|data|data.get_temp::<std::sync::Arc<eframe::IntegrationInfo>>(Id::new("integration_info")))
+                else {bail!("Cannot get the integration info")};
+            let mut url = integration_info.web_info.location.url.clone();
+            url.push_str("?fractal=");
+            url
+        };
+
+        let serialized_code = rmp_serde::to_vec_named(self)?;
+        BASE64_URL_SAFE.encode_string(serialized_code, &mut url);
+        Ok(url)
+    }
+
+    pub fn from_code(code: &str) -> Result<Fractal> {
+        let bits = BASE64_URL_SAFE.decode(code)?;
+        rmp_serde::decode::from_slice(&bits).map_err(|e| e.into())
+    }
+
+
+    pub fn from_link(link: &str) -> Result<Fractal> {
+        match Url::parse(link) {
+            Ok(url) => {
+                // if the url parsing was successful we extract the query param
+                let code = url.query_pairs()
+                    .find(|(key, _)| key == "fractal")
+                    .ok_or_else(|| anyhow!("Cannot find the fractal in the query string"))?
+                    .1;
+                Self::from_code(&code)
+            },
+            Err(_) => {
+                // otherwise we can only assume that the whole string is the base64 code
+                Self::from_code(link)
+            },
+        }
+    }
 }
-
-/*
-(x-r1)(x-r2)(x-r3)(x-r4)(x-r5)
-
-x - r1
-x^2 - x (r1 + r2) + r1 r2
-x^3 - x^2 (r1 + r2 + r3) + x r1 r2
-
-
-
-*/
