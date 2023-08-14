@@ -41,6 +41,7 @@ impl Settings {
             SidePanel::right("settings_panel").show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.heading("Fractals");
+                    // todo: instead of popping into a floating window it would be more useful if the button hide the side panel and left a tiny button to unhide
                     if Button::new("⏏").frame(false).ui(ui).clicked() {
                         self.floating = true;
                     }

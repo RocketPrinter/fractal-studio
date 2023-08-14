@@ -12,7 +12,8 @@ struct Constants {
     c: vec2<f32>,//120..128
     nr_roots: u32,//128..132
     max_iterations: u32,//132..136
-    _padding: vec2<f32>,//136..144
+    threshold: f32,//136..140
+    _padding: f32,//140..144
 }
 // array elements must have a size of 16 so we interweave the roots and polynomial constant arraysa
 struct Element {
@@ -61,7 +62,6 @@ fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
 
 // https://en.wikipedia.org/wiki/Newton_fractal#Implementation
 // will return -1 if it's not close enough to any of the roots and the root index otherwise
-const treshold = 99999999.;
 fn newtons_method(z: vec2<f32>) -> i32 {
     var z = z;
     for(var iteration = 0u; iteration < constants.max_iterations; iteration++) {
@@ -78,7 +78,7 @@ fn newtons_method(z: vec2<f32>) -> i32 {
         }
         z = z - cdiv(f,fd);
     }
-    var closest_root = -1; var closest_dist = treshold;
+    var closest_root = -1; var closest_dist = constants.threshold;
     for (var i=0u;i<constants.nr_roots;i++) {
         let d = distance(z,constants.arr[i].root);
         if (d < closest_dist) {
@@ -97,7 +97,7 @@ fn csq(z: vec2<f32>) -> vec2<f32> {
     return vec2(z.x * z.x - z.y * z.y, 2. * z.x * z.y);
 }
 
-// todo: maybe use https://arxiv.org/pdf/1608.07596.pdf
+// maybe use https://arxiv.org/pdf/1608.07596.pdf
 // from num_complex crate
 fn cdiv(a: vec2<f32>, b: vec2<f32>) -> vec2<f32> {
     let norm_sqr = b.x * b.x + b.y * b.y;

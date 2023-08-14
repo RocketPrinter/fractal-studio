@@ -25,7 +25,8 @@ pub struct RenderData {
 
 pub const UNIFORM_BUFFER_SIZE: u64 = 144;
 
-const ZOOM_FACTOR: f32 = 0.001;
+const ZOOM_FACTOR: f32 = -0.001;
+const PINCH_FACTOR: f32 = -0.3;
 const DRAG_FACTOR: f32 = 0.003;
 
 impl Visualizer {

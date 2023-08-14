@@ -5,11 +5,11 @@ use num_traits::One;
 use rand::Rng;
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
 use crate::app::widgets::{vec2_ui_full};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use base64::prelude::*;
 use url::Url;
 
-// todo: allow exporting config to a sharable link
+// todo: switch to enum_dispatch so every fractal can have it's own file, and also to use encase
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, EnumDiscriminants)]
 #[strum_discriminants(derive(EnumIter, EnumMessage, Hash))]
 pub enum Fractal {
@@ -27,7 +27,6 @@ pub enum Fractal {
     },
     /// Newton's fractal
     Netwtons {
-        // todo: add a threshold for black pixels and arguments a and c from the wiki page
         iterations: u32,
         /// 1..=5 roots
         roots: Vec<Vec2>,
@@ -36,7 +35,7 @@ pub enum Fractal {
         // extra parameters
         a: Vec2,
         c: Vec2,
-
+        threshold: f32, // can be infinity
     }
 }
 
@@ -58,6 +57,7 @@ impl Fractal {
                 pick_using_cursor: None,
                 a: Vec2::new(1., 0.),
                 c: Vec2::ZERO,
+                threshold: f32::INFINITY,
             },
         }
     }
@@ -100,7 +100,7 @@ impl Fractal {
                     * animating_on_circle = ui.button("Animate on circle").clicked();
                 }
             },
-            Fractal::Netwtons { iterations, roots, pick_using_cursor, a, c } => {
+            Fractal::Netwtons { iterations, roots, pick_using_cursor, a, c, threshold } => {
                 ui.horizontal(|ui|{
                     ui.label("Iterations");
                     DragValue::new(iterations).speed(1).clamp_range(0..=3000).ui(ui);
@@ -143,6 +143,18 @@ impl Fractal {
                         if vec2_ui_full(ui, "", c, true, Some(0.02), None) {
                             *pick_using_cursor = Some(6); //todo: hack
                         }
+                    });
+                    ui.horizontal(|ui|{
+                       let mut enabled = !threshold.is_infinite();
+                        ui.checkbox(&mut enabled, "");
+                        // if the checkbox is not ticked we set the threshold to infinity
+                        if enabled {
+                            if threshold.is_infinite() { *threshold = 10.; }
+                        } else {
+                            *threshold = f32::INFINITY;
+                        }
+                        ui.label("Threshold");
+                        ui.add_enabled(enabled, DragValue::new(threshold).speed(0.1).clamp_range(0.0001..=f32::INFINITY));
                     });
                 });
             },
@@ -204,7 +216,7 @@ impl Fractal {
                 buffer[20..24].copy_from_slice(&r.to_ne_bytes());
                 buffer[24..32].copy_from_slice(bytes_of(c));
             },
-            Fractal::Netwtons { iterations, roots, a, c, .. } => {
+            Fractal::Netwtons { iterations, roots, a, c, threshold, .. } => {
                 let mut polynomial_coef = [Complex32::default();6];
                 polynomial_coef[0] = Complex32::one();
                 for (i,root) in roots.iter().enumerate() {
@@ -230,6 +242,7 @@ impl Fractal {
                 buffer[120..128].copy_from_slice(bytes_of(c));
                 buffer[128..132].copy_from_slice(&(roots.len() as u32).to_ne_bytes());
                 buffer[132..136].copy_from_slice(&iterations.to_ne_bytes());
+                buffer[136..140].copy_from_slice(&threshold.to_ne_bytes());
             },
         }
     }
@@ -248,7 +261,7 @@ impl Fractal {
         #[cfg(target_arch = "wasm32")]
         let mut url = {
             let Some(integration_info) = _ctx.data(|data|data.get_temp::<std::sync::Arc<eframe::IntegrationInfo>>(Id::new("integration_info")))
-                else {bail!("Cannot get the integration info")};
+                else {anyhow::bail!("Cannot get the integration info")};
             let mut url = integration_info.web_info.location.url.clone();
             url.push_str("?fractal=");
             url
