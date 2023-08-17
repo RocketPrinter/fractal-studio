@@ -42,6 +42,8 @@ impl App for EguiApp {
             // if we're running in web try loading the fractal from the url
             #[cfg(target_arch = "wasm32")]
             {
+                use crate::fractal::{Fractal, FractalTrait};
+                use log::error;
                 if let Some(code) = info.web_info.location.query_map.get("fractal") {
                     match Fractal::from_code(code) {
                         Ok(fractal) => self.settings.fractal = fractal,

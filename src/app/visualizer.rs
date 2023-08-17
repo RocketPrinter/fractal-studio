@@ -1,16 +1,17 @@
 use std::collections::{HashMap};
 use std::sync::{Arc};
 use bytemuck::bytes_of;
-use eframe::egui::{Align2, PaintCallback, Sense, Ui, Vec2, vec2};
+use eframe::egui::{Align, Align2, Button, Layout, PaintCallback, Sense, Ui, Vec2, vec2, Widget};
 use eframe::egui_wgpu::CallbackFn;
 use eframe::wgpu::{ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexState};
 use encase::UniformBuffer;
 use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages};
 use crate::app::settings::{Settings};
+use crate::app::widgets::get_transparent_button_fill;
 use crate::fractal::{FractalDiscriminants, FractalTrait};
 use crate::wgsl::SHADERS;
 
-// todo: reset button for zoom and offset
+// todo: reset zoom and offset when changing fractal
 #[derive(Debug, Clone)]
 pub struct Visualizer {
     scale: f32,
@@ -100,6 +101,7 @@ impl Visualizer {
             ),
         });
 
+        // fractals can draw extra stuff
         settings.fractal.draw_extra(&painter, cursor_shader_space);
 
         if settings.debug_label {
@@ -108,6 +110,16 @@ impl Visualizer {
                                ui.style().visuals.strong_text_color(),
                                format!("scale:{}, offset:{:?}, cursor:{cursor_shader_space:?}", self.scale, self.offset));
         }
+
+        // position reset button, we have to do some funky stuff to get it to the right place
+        ui.allocate_ui_at_rect(ui.max_rect().shrink(5.), |ui| {
+            ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                if !settings.hide && Button::new("🏠").fill(get_transparent_button_fill(ui.visuals(), 0.7)).ui(ui).clicked() {
+                    self.scale = 1.;
+                    self.offset = Vec2::ZERO;
+                }
+            });
+        });
     }
 }
 

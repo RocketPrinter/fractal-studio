@@ -67,7 +67,9 @@ impl Fractal {
         //uses "integration_info" data to get the integration info, which should be set in app.rs
         #[cfg(target_arch = "wasm32")]
         let mut url = {
-            let Some(integration_info) = _ctx.data(|data|data.get_temp::<std::sync::Arc<eframe::IntegrationInfo>>(Id::new("integration_info")))
+            use eframe::egui::Id;
+            use std::sync::Arc;
+            let Some(integration_info) = _ctx.data(|data|data.get_temp::<Arc<eframe::IntegrationInfo>>(Id::new("integration_info")))
                 else {anyhow::bail!("Cannot get the integration info")};
             let mut url = integration_info.web_info.location.url.clone();
             url.push_str("?fractal=");

@@ -1,4 +1,4 @@
-use eframe::egui::{CollapsingHeader, Grid, RichText, TextEdit, Ui};
+use eframe::egui::{Button, CollapsingHeader, Grid, RichText, TextEdit, Ui};
 use crate::fractal::Fractal;
 
 #[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
@@ -62,11 +62,8 @@ impl Library {
             });
 
         ui.horizontal(|ui|{
-            if self.add_text.is_empty() {
-                self.add_text.push_str("Title");
-            }
             TextEdit::singleline(&mut self.add_text).desired_width(130.).show(ui);
-            if ui.button("Add").clicked() {
+            if ui.add_enabled(!self.add_text.is_empty(), Button::new("Add")).clicked() {
                 match fractal.to_code() {
                     Ok(code) => {
                         self.user_fractals.push((

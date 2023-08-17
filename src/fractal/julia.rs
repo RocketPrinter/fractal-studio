@@ -77,7 +77,7 @@ impl FractalTrait for Julia {
         }
     }
 
-    fn explanation(&mut self, ui: &mut Ui) {
+    fn explanation(&mut self, _ui: &mut Ui) {
         //todo
     }
 
@@ -97,7 +97,7 @@ impl FractalTrait for Julia {
         }).unwrap();
     }
 
-    fn draw_extra(&mut self, painter: &Painter, mouse_pos: Option<Vec2>) {
+    fn draw_extra(&mut self, _painter: &Painter, mouse_pos: Option<Vec2>) {
         if let (Some(mouse_pos), true) = (mouse_pos, self.pick_using_cursor) {
             self.c = vec2_to_c32(&mouse_pos);
         }

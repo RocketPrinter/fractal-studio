@@ -110,7 +110,7 @@ impl FractalTrait for Newtons {
         });
     }
 
-    fn explanation(&mut self, ui: &mut Ui) {
+    fn explanation(&mut self, _ui: &mut Ui) {
         // todo
     }
 
@@ -151,7 +151,7 @@ impl FractalTrait for Newtons {
         }).unwrap()
     }
 
-    fn draw_extra(&mut self, painter: &Painter, mouse_pos: Option<Vec2>) {
+    fn draw_extra(&mut self, _painter: &Painter, mouse_pos: Option<Vec2>) {
         if let (Some(mouse_pos),Some(pick)) = (mouse_pos, &self.pick_using_cursor) {
             match pick {
                 Pick::Root(index) => {

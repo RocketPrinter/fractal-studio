@@ -1,5 +1,5 @@
 use eframe::egui;
-use eframe::egui::{Button, CollapsingHeader, ComboBox, RichText, SidePanel, Ui, Widget, Window};
+use eframe::egui::{Align2, Area, Button, CollapsingHeader, ComboBox, Id, RichText, SidePanel, Ui, vec2, Widget, Window};
 use strum::{EnumMessage, IntoEnumIterator};
 use crate::app::library::Library;
 use crate::fractal::{Fractal, FractalDiscriminants, FractalTrait};
@@ -11,7 +11,7 @@ pub struct Settings {
     pub library: Library,
     pub library_window_open: bool,
     #[serde(skip)]
-    pub floating: bool,
+    pub hide: bool,
 }
 
 impl Default for Settings {
@@ -21,35 +21,33 @@ impl Default for Settings {
             library: Default::default(),
             library_window_open: false,
             debug_label: true,
-            floating: false,
+            hide: false,
         }
     }
 }
 
 impl Settings {
     pub fn ctx(&mut self, ctx: &egui::Context) {
-        if self.floating {
-            let mut floating = self.floating;
-            Window::new("Fractals")
-                .vscroll(true)
-                .open(&mut floating)
+        if self.hide {
+            Area::new(Id::new("settings_open"))
+                .anchor(Align2::RIGHT_TOP, vec2(0.,6.))
                 .show(ctx, |ui| {
-                    self.ui(ui)
-                });
-            self.floating = floating;
-        } else {
-            SidePanel::right("settings_panel").show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.heading("Fractals");
-                    // todo: instead of popping into a floating window it would be more useful if the button hide the side panel and left a tiny button to unhide
-                    if Button::new("⏏").frame(false).ui(ui).clicked() {
-                        self.floating = true;
+                    if Button::new("⏴").frame(false).ui(ui).clicked() {
+                        self.hide = false;
                     }
                 });
-                ui.separator();
-                self.ui(ui)
-            });
         }
+
+        SidePanel::right("settings_panel").show_animated( ctx, !self.hide, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading("Fractals");
+                if Button::new("⏵").frame(false).ui(ui).clicked() {
+                    self.hide = true;
+                }
+            });
+            ui.separator();
+            self.ui(ui)
+        });
     }
 
     fn ui(&mut self, ui: &mut Ui) {

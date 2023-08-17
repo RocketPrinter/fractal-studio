@@ -1,5 +1,5 @@
 use std::ops::RangeInclusive;
-use eframe::egui::{Button, DragValue, Response, Ui, Widget, WidgetText};
+use eframe::egui::{Button, Color32, DragValue, Response, Ui, Visuals, Widget, WidgetText};
 use crate::math::C32;
 
 pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) {
@@ -38,4 +38,8 @@ pub fn option_checkbox<T>(ui: &mut Ui, value: &mut Option<T>, label: impl Into<W
     } else {
         *value = None;
     }
+}
+
+pub fn get_transparent_button_fill(visuals: &Visuals, gamma_mul: f32) -> Color32 {
+    visuals.widgets.noninteractive.weak_bg_fill.gamma_multiply(gamma_mul)
 }

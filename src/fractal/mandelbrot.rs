@@ -40,7 +40,7 @@ impl FractalTrait for Mandelbrot {
         }
     }
 
-    fn explanation(&mut self, ui: &mut Ui) {
+    fn explanation(&mut self, _ui: &mut Ui) {
         // todo
     }
 
