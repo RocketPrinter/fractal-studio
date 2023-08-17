@@ -1,4 +1,4 @@
-use eframe::egui::{CollapsingHeader, Grid, Label, RichText, TextEdit, Ui};
+use eframe::egui::{CollapsingHeader, Grid, RichText, TextEdit, Ui};
 use crate::fractal::Fractal;
 
 #[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
@@ -22,7 +22,7 @@ impl Library {
                 ui.scope(|ui|{
                     // force the text to wrap
                     ui.set_max_width(150.);
-                    ui.label("Here's some cool fractals I found while developing this project:");
+                    ui.label("Here's some cool fractal I found while developing this project:");
                 });
                 for (name, code) in INCLUDED_FRACTALS.iter() {
                     if ui.selectable_label(false, *name).clicked() {

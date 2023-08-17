@@ -4,11 +4,13 @@ use bytemuck::bytes_of;
 use eframe::egui::{Align2, PaintCallback, Sense, Ui, Vec2, vec2};
 use eframe::egui_wgpu::CallbackFn;
 use eframe::wgpu::{ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexState};
+use encase::UniformBuffer;
 use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages};
 use crate::app::settings::{Settings};
-use crate::fractal::FractalDiscriminants;
+use crate::fractal::{FractalDiscriminants, FractalTrait};
 use crate::wgsl::SHADERS;
 
+// todo: reset button for zoom and offset
 #[derive(Debug, Clone)]
 pub struct Visualizer {
     scale: f32,
@@ -44,6 +46,7 @@ impl Visualizer {
         let aspect_ratio_correction = Vec2::new(painter.clip_rect().aspect_ratio(), 1.);
 
         // changing zoom and offset
+        // todo: refactor
         let mut cursor_shader_space: Option<Vec2> = None;
         self.offset += response.drag_delta() * vec2(-1.,1.) * DRAG_FACTOR;
         if let Some(hover_pos) = response.hover_pos() {
@@ -63,15 +66,15 @@ impl Visualizer {
                 self.scale = new_scale;
 
                 cursor_shader_space = Some((cursor_clip_space + self.offset) * self.scale * aspect_ratio_correction);
-                settings.fractal.cursor_shader_space(cursor_shader_space.unwrap());
             });
         }
 
         // preparing data for writing to the uniform buffer
-        let mut buffer_data = [0u8;UNIFORM_BUFFER_SIZE as usize];
-        buffer_data[0.. 8].copy_from_slice(bytes_of(&(self.scale * aspect_ratio_correction)));
-        buffer_data[8..16].copy_from_slice(bytes_of(&self.offset));
-        settings.fractal.fill_uniform_buffer(&mut buffer_data);
+        let mut buffer = [0u8;UNIFORM_BUFFER_SIZE as usize];
+        buffer[0.. 8].copy_from_slice(bytes_of(&(self.scale * aspect_ratio_correction)));
+        buffer[8..16].copy_from_slice(bytes_of(&self.offset));
+        let settings_buffer = UniformBuffer::new(&mut buffer[16..]);
+        settings.fractal.fill_uniform_buffer(settings_buffer);
 
         // rendering
         let fractal_d = FractalDiscriminants::from(&settings.fractal);
@@ -82,7 +85,7 @@ impl Visualizer {
                 // as the expose-ids feature on wgpu is not activated, we'll just have to assume that the device remains constant
                 .prepare(move |device, queue, _encoder, type_map| {
                     let data = type_map.entry::<RenderData>().or_insert_with(|| RenderData::new(device, texture_format));
-                    queue.write_buffer(&data.uniform_buffer, 0, &buffer_data);
+                    queue.write_buffer(&data.uniform_buffer, 0, &buffer);
                     vec![]
                 })
                 .paint(move |_info, pass, type_map| {
@@ -96,6 +99,8 @@ impl Visualizer {
                 })
             ),
         });
+
+        settings.fractal.draw_extra(&painter, cursor_shader_space);
 
         if settings.debug_label {
             painter.debug_text(painter.clip_rect().left_bottom(),

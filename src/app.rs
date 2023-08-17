@@ -6,10 +6,8 @@ pub mod library;
 use std::sync::Arc;
 use eframe::egui::{CentralPanel, Frame, Id};
 use eframe::{App, CreationContext, egui};
-use log::error;
 use crate::app::settings::Settings;
 use crate::app::visualizer::Visualizer;
-use crate::fractal::Fractal;
 
 pub struct EguiApp {
     settings: Settings,

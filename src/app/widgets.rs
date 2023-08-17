@@ -1,16 +1,12 @@
 use std::ops::RangeInclusive;
-use eframe::egui::{Button, DragValue, Ui, Vec2, Widget, WidgetText};
+use eframe::egui::{Button, DragValue, Response, Ui, Widget, WidgetText};
+use crate::math::C32;
 
-pub fn vec2_ui(ui: &mut Ui, v: &mut Vec2, complex: bool, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) {
+pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) {
     ui.horizontal(|ui| {
-        let mut x = DragValue::new(&mut v.x);
-        let mut y = DragValue::new(&mut v.y);
-        if complex {
-            y = y.suffix("i");
-        } else {
-            x = x.prefix("x=");
-            y = y.prefix("y=");
-        }
+        let mut x = DragValue::new(&mut v.re);
+        let mut y = DragValue::new(&mut v.im);
+        y = y.suffix("i");
         if let Some(speed) = speed {
             x = x.speed(speed);
             y = y.speed(speed);
@@ -26,8 +22,20 @@ pub fn vec2_ui(ui: &mut Ui, v: &mut Vec2, complex: bool, speed: Option<f32>, cla
 }
 
 /// also has a label and a button for enabling picking
-pub fn vec2_ui_full(ui: &mut Ui, label: impl Into<WidgetText>, v: &mut Vec2,  complex: bool, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) -> bool {
+pub fn c32_ui_full(ui: &mut Ui, label: impl Into<WidgetText>, v: &mut C32, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) -> Response {
     ui.label(label);
-    vec2_ui(ui, v, complex, speed, clamp_range);
-    Button::new("🖱").small().ui(ui).clicked()
+    c32_ui(ui, v, speed, clamp_range);
+    Button::new("🖱").small().ui(ui)
+}
+
+pub fn option_checkbox<T>(ui: &mut Ui, value: &mut Option<T>, label: impl Into<WidgetText>, default_if_some: impl FnOnce() -> T) {
+    let mut checked = value.is_some();
+    ui.checkbox(&mut checked, label);
+    if checked {
+        if value.is_none() {
+            *value = Some(default_if_some());
+        }
+    } else {
+        *value = None;
+    }
 }

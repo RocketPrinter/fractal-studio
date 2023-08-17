@@ -10,6 +10,6 @@ lazy_static!{
         (TestGrid,include_wgsl!("test_grid.wgsl")),
         (Mandelbrot,include_wgsl!("mandelbrot.wgsl")),
         (Julia,include_wgsl!("julia.wgsl")),
-        (Netwtons,include_wgsl!("newtons.wgsl")),
+        (Newtons,include_wgsl!("newtons.wgsl")),
     ];
 }
