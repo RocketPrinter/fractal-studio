@@ -1,5 +1,5 @@
 use std::ops::RangeInclusive;
-use eframe::egui::{Button, Color32, DragValue, Response, Ui, Visuals, Widget, WidgetText};
+use eframe::egui::{Button, Color32, DragValue, Response, RichText, Ui, Visuals, Widget, WidgetText};
 use crate::math::C32;
 
 pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) {
@@ -37,6 +37,15 @@ pub fn option_checkbox<T>(ui: &mut Ui, value: &mut Option<T>, label: impl Into<W
         }
     } else {
         *value = None;
+    }
+}
+
+pub fn dismissible_error(ui: &mut Ui, err: &mut Option<anyhow::Error>) {
+    if let Some(e) = &err {
+        let text = RichText::new(format!("Error: {e}")).color(ui.style().visuals.error_fg_color);
+        if ui.selectable_label(false, text).clicked() {
+            err.take();
+        }
     }
 }
 

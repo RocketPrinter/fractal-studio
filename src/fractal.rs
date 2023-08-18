@@ -56,7 +56,7 @@ impl Fractal {
 
     pub fn to_code(&self) -> Result<String> {
         let serialized_code = rmp_serde::to_vec_named(self)?;
-        Ok(BASE64_URL_SAFE.encode(serialized_code))
+        Ok(BASE64_URL_SAFE_NO_PAD.encode(serialized_code))
     }
 
     pub fn to_link(&self, _ctx: &Context) -> Result<String> {
@@ -77,12 +77,12 @@ impl Fractal {
         };
 
         let serialized_code = rmp_serde::to_vec_named(self)?;
-        BASE64_URL_SAFE.encode_string(serialized_code, &mut url);
+        BASE64_URL_SAFE_NO_PAD.encode_string(serialized_code, &mut url);
         Ok(url)
     }
 
     pub fn from_code(code: &str) -> Result<Fractal> {
-        let bits = BASE64_URL_SAFE.decode(code)?;
+        let bits = BASE64_URL_SAFE_NO_PAD.decode(code)?;
         rmp_serde::decode::from_slice(&bits).map_err(|e| e.into())
     }
 

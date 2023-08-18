@@ -1,7 +1,8 @@
 use eframe::egui;
-use eframe::egui::{Align2, Area, Button, CollapsingHeader, ComboBox, Id, RichText, SidePanel, Ui, vec2, Widget, Window};
+use eframe::egui::{Align2, Area, Button, CollapsingHeader, ComboBox, Id, RichText, SidePanel, TextEdit, Ui, vec2, Widget, Window};
 use strum::{EnumMessage, IntoEnumIterator};
 use crate::app::library::Library;
+use crate::app::widgets::dismissible_error;
 use crate::fractal::{Fractal, FractalDiscriminants, FractalTrait};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -12,6 +13,10 @@ pub struct Settings {
     pub library_window_open: bool,
     #[serde(skip)]
     pub hide: bool,
+    #[serde(skip)]
+    pub import_text: String,
+    #[serde(skip)]
+    pub import_err: Option<anyhow::Error>,
 }
 
 impl Default for Settings {
@@ -22,6 +27,8 @@ impl Default for Settings {
             library_window_open: false,
             debug_label: true,
             hide: false,
+            import_text: "".into(),
+            import_err: None,
         }
     }
 }
@@ -67,7 +74,25 @@ impl Settings {
 
         ui.horizontal(|ui| {
             ui.menu_button("Import", |ui| {
-                ui.label("todo");//todo
+                TextEdit::multiline(&mut self.import_text)
+                    .hint_text("Link or code")
+                    .desired_width(150.)
+                    .ui(ui);
+                
+                if ui.add_enabled(!self.import_text.is_empty(), Button::new("Import")).clicked() {
+                    match Fractal::from_link(&self.import_text) {
+                        Ok(fractal) => {
+                            self.fractal = fractal;
+                            self.import_text.clear();
+                            self.import_err = None;
+                        },
+                        Err(e) => {
+                            self.import_err = Some(e);
+                        }
+                    }
+                }
+                
+                dismissible_error(ui, &mut self.import_err);
             });
             ui.menu_button("Export", |ui| {
                 match self.fractal.to_link(ui.ctx()) {

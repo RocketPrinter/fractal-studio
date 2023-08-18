@@ -23,6 +23,7 @@ fn main() -> eframe::Result<()> {
 }
 
 // When compiling to web using trunk:
+// todo: Caching is annoying and often requires Ctrl+F5
 #[cfg(target_arch = "wasm32")]
 fn main() {
     // Redirect `log` message to `console.log` and friends:
