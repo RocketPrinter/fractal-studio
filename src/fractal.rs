@@ -2,6 +2,7 @@ mod test_grid;
 mod mandelbrot;
 mod julia;
 mod newtons;
+mod lyapunov;
 
 use eframe::egui::{Context, Painter, Ui, Vec2};
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
@@ -14,6 +15,7 @@ use test_grid::TestGrid;
 use mandelbrot::Mandelbrot;
 use julia::Julia;
 use newtons::Newtons;
+use lyapunov::Lyapunov;
 
 #[enum_dispatch]
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, EnumDiscriminants)]
@@ -27,12 +29,17 @@ pub enum Fractal {
     Julia,
     /// Newton's fractal
     Newtons,
+    // todo: Burning Ship
+    // todo: Burning Ship Julia
+    /// Lyapunov's fractal
+    Lyapunov,
 }
 
 #[enum_dispatch(Fractal)]
 pub trait FractalTrait {
+    fn override_label(&mut self) -> Option<&'static str> { None }
     fn settings_ui(&mut self, ui: &mut Ui);
-    fn explanation(&mut self, ui: &mut Ui);
+    fn explanation_ui(&mut self, ui: &mut Ui);
     fn fill_uniform_buffer(&self, _buffer: UniformBuffer<&mut [u8]>) {}
     /// mouse_pos will be Some if the mouse is hovering over the visualizer
     fn draw_extra(&mut self, _painter: &Painter, _mouse_pos: Option<Vec2>, /* todo: 2x2 matrix that converts mouse pos to shader space? */) {}
@@ -51,6 +58,7 @@ impl Fractal {
             FractalDiscriminants::Mandelbrot => Mandelbrot::default().into(),
             FractalDiscriminants::Julia => Julia::default().into(),
             FractalDiscriminants::Newtons => Newtons::default().into(),
+            FractalDiscriminants::Lyapunov => Lyapunov::default().into(),
         }
     }
 

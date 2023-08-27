@@ -3,6 +3,8 @@ use encase::{ShaderType, UniformBuffer};
 use crate::app::widgets::option_checkbox;
 use crate::fractal::FractalTrait;
 
+// todo: make Julia sets be a subtype of Mandelbrot
+// also add Burning Ship
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Mandelbrot {
     iterations: u32,
@@ -27,6 +29,14 @@ impl Default for Mandelbrot {
 }
 
 impl FractalTrait for Mandelbrot {
+    fn override_label(&mut self) -> Option<&'static str> {
+        if self.e.is_some() {
+            Some("Multibrot set")
+        } else {
+            None
+        }
+    }
+
     fn settings_ui(&mut self, ui: &mut Ui) {
         ui.label("Iterations");
         DragValue::new(&mut self.iterations).speed(1).clamp_range(1..=3000).ui(ui);
@@ -40,7 +50,7 @@ impl FractalTrait for Mandelbrot {
         }
     }
 
-    fn explanation(&mut self, _ui: &mut Ui) {
+    fn explanation_ui(&mut self, _ui: &mut Ui) {
         // todo
     }
 

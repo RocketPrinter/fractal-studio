@@ -9,7 +9,7 @@ impl FractalTrait for TestGrid {
 
     }
 
-    fn explanation(&mut self, ui: &mut Ui) {
+    fn explanation_ui(&mut self, ui: &mut Ui) {
         ui.label("This is a test grid.");
     }
 }

@@ -59,8 +59,9 @@ impl Settings {
 
     fn ui(&mut self, ui: &mut Ui) {
         let fractal_d = FractalDiscriminants::from(&self.fractal);
+        let fractal_label = self.fractal.override_label().unwrap_or_else(|| fractal_d.get_documentation().unwrap_or_default());
         ComboBox::from_id_source("Fractal selector")
-            .selected_text(fractal_d.get_documentation().unwrap_or_default())
+            .selected_text(fractal_label)
             .show_ui(ui, |ui| {
                 // skip(1) skips TestGrid
                 for iter_d in FractalDiscriminants::iter().skip(1) {
@@ -78,7 +79,7 @@ impl Settings {
                     .hint_text("Link or code")
                     .desired_width(150.)
                     .ui(ui);
-                
+
                 if ui.add_enabled(!self.import_text.is_empty(), Button::new("Import")).clicked() {
                     match Fractal::from_link(&self.import_text) {
                         Ok(fractal) => {
@@ -91,7 +92,7 @@ impl Settings {
                         }
                     }
                 }
-                
+
                 dismissible_error(ui, &mut self.import_err);
             });
             ui.menu_button("Export", |ui| {

@@ -110,7 +110,7 @@ impl FractalTrait for Newtons {
         });
     }
 
-    fn explanation(&mut self, _ui: &mut Ui) {
+    fn explanation_ui(&mut self, _ui: &mut Ui) {
         // todo
     }
 

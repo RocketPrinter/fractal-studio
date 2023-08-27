@@ -37,6 +37,14 @@ impl Default for Julia {
 }
 
 impl FractalTrait for Julia {
+    fn override_label(&mut self) -> Option<&'static str> {
+        if self.e.is_some() {
+            Some("Multijulia set")
+        } else {
+            None
+        }
+    }
+
     fn settings_ui(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui|{
             ui.label("Iterations");
@@ -77,7 +85,7 @@ impl FractalTrait for Julia {
         }
     }
 
-    fn explanation(&mut self, _ui: &mut Ui) {
+    fn explanation_ui(&mut self, _ui: &mut Ui) {
         //todo
     }
 

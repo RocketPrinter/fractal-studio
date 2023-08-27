@@ -21,6 +21,7 @@ const INCLUDED_FRACTALS: &[(&str,&str)] = &[
     ("Meta", "gadOZXd0b25zhqppdGVyYXRpb25zZKVyb290c5OSyj-AAADKAAAAAJLKvwAAAMo_XbItksq_AAAAyr9dsi2xcGlja191c2luZ19jdXJzb3LAoWGSyj3sv7HKvszMzaFjksoAAAAAygAAAACpdGhyZXNob2xkyn-AAAA"),
     ("Blobs", "gadOZXd0b25zhqppdGVyYXRpb25zMqVyb290c5OSyj-AAADKAAAAAJLKvwAAAMo_XbItksq_AAAAyr9dsi2xcGlja191c2luZ19jdXJzb3LAoWGSyj-AAADKP564UqFjksoAAAAAygAAAACpdGhyZXNob2xkyj9MzM0"),
     ("Spiral blobs", "gadOZXd0b25zhqppdGVyYXRpb25zMqVyb290c5OSyj-AAADKAAAAAJLKvwAAAMo_XbItksq_AAAAyr9dsi2xcGlja191c2luZ19jdXJzb3LAoWGSyj-AAADKP564UqFjksoAAAAAyj51wo-pdGhyZXNob2xkyj8mZmY"),
+    ("Zircon City", "gahMeWFwdW5vdoKqaXRlcmF0aW9uc80BkKhzZXF1ZW5jZaxCQkJCQkJBQUFBQUE")
 ];
 
 impl Library {
