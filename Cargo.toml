@@ -3,6 +3,12 @@ name = "fractal_visualizer"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = [
+    ".",
+    "macros",
+]
+
 [dependencies]
 eframe = { version = "0.22.0", default-features = false, features = [
     "accesskit", "default_fonts", "wgpu", "persistence",
@@ -25,6 +31,8 @@ url = "2.4.0"
 enum_dispatch = "0.3.12"
 encase = { version = "0.6.1", features = ["nalgebra"] }
 nalgebra = { version = "0.32.3", features = ["serde-serialize", "convert-bytemuck"] }
+
+fractal_visualizer_macros = { path = "macros" }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
