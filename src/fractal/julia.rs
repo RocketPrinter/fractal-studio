@@ -4,6 +4,7 @@ use nalgebra::{ComplexField, UnitComplex};
 use crate::app::widgets::{c32_ui_full, option_checkbox};
 use crate::fractal::FractalTrait;
 use crate::math::{C32, UC32, vec2_to_c32};
+use crate::wgsl::ShaderCode;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Julia {
@@ -88,6 +89,8 @@ impl FractalTrait for Julia {
     fn explanation_ui(&mut self, _ui: &mut Ui) {
         //todo
     }
+
+    fn get_shader_code(&self) -> ShaderCode { ShaderCode::Julia }
 
     fn fill_uniform_buffer(&self, mut buffer: UniformBuffer<&mut [u8]>) {
         let e = self.e.unwrap_or(2.);

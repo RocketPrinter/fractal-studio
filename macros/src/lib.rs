@@ -140,36 +140,48 @@ pub fn include_wgsl_variants(input: TokenStream) -> TokenStream {
         parse_macro_input!(input as IncludeWgslVariants);
 
     println!("Processing macro {path:?}");
-    let file = read_to_string(path).unwrap();
+    let file = read_to_string(&path).unwrap();
     let preproc = Preprocessor::default();
 
     let mut variant_names = vec![];
+    let mut variant_label = vec![];
     let mut variant_shaders = vec![];
-    for Variant{ name, mut defs } in variants {
+    for Variant{ name: v_name, mut defs } in variants {
         // we just need to merge the constant defs with the variant's defs
-        for (name, value) in shared_defs.iter().flatten() {
-            if !defs.contains_key(name) {
-                defs.insert(name.clone(), *value);
+        for (v_name, value) in shared_defs.iter().flatten() {
+            if !defs.contains_key(v_name) {
+                defs.insert(v_name.clone(), *value);
             }
         }
 
         let output = preproc.preprocess(&file, &defs, false).unwrap().preprocessed_source;
 
-        variant_names.push(Ident::new(&name, name.span()));
+        variant_names.push(Ident::new(&v_name, v_name.span()));
+        variant_label.push(format!("{name}/{v_name}"));
         variant_shaders.push(output);
     };
 
+    let path = path.to_string_lossy();
+
     let output = quote! {
-        #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+        #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
         #vis enum #name {
             #(#variant_names,)*
         }
 
         impl #name {
-            #vis fn get_shader(self) -> &'static str {
+            #vis fn get_shader(self) -> wgpu::ShaderModuleDescriptor<'static> {
                 match self {
-                    #(Self::#variant_names => #variant_shaders,)*
+                    #(Self::#variant_names => ShaderModuleDescriptor{
+                        label: Some(#variant_label),
+                        source: wgpu::ShaderSource::Wgsl(#variant_shaders.into())
+                    },)*
                 }
+            }
+
+            #vis fn get_raw_shader(self) -> &'static str {
+                // the include_str! forces the compiler to watch the file for changes and reruns the macro if any happen so this function is actually very important
+                include_str!(#path)
             }
         }
     };

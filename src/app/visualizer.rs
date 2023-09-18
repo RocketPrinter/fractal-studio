@@ -5,11 +5,11 @@ use eframe::egui::{Align, Align2, Button, Layout, PaintCallback, Sense, Ui, Vec2
 use eframe::egui_wgpu::CallbackFn;
 use eframe::wgpu::{ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexState};
 use encase::UniformBuffer;
-use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages};
+use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages, PipelineLayout};
 use crate::app::settings::{Settings};
 use crate::app::widgets::get_transparent_button_fill;
 use crate::fractal::{FractalDiscriminants, FractalTrait};
-use crate::wgsl::SHADERS;
+use crate::wgsl::ShaderCode;
 
 // todo: reset zoom and offset when changing fractal
 #[derive(Debug, Clone)]
@@ -23,7 +23,8 @@ pub struct Visualizer {
 pub struct RenderData {
     uniform_buffer: Buffer,
     bind_group: BindGroup,
-    pipelines: HashMap<FractalDiscriminants,RenderPipeline>,
+    pipeline_layout: PipelineLayout,
+    pipelines: HashMap<ShaderCode,RenderPipeline>,
 }
 
 pub const UNIFORM_BUFFER_SIZE: u64 = 144;
@@ -78,21 +79,22 @@ impl Visualizer {
         settings.fractal.fill_uniform_buffer(settings_buffer);
 
         // rendering
-        let fractal_d = FractalDiscriminants::from(&settings.fractal);
+        let shader_code = settings.fractal.get_shader_code();
         let texture_format = self.texture_format;
         painter.add(PaintCallback {
             rect: painter.clip_rect(),
             callback: Arc::new(CallbackFn::default()
                 // as the expose-ids feature on wgpu is not activated, we'll just have to assume that the device remains constant
                 .prepare(move |device, queue, _encoder, type_map| {
-                    let data = type_map.entry::<RenderData>().or_insert_with(|| RenderData::new(device, texture_format));
+                    let data = type_map.entry::<RenderData>().or_insert_with(|| RenderData::new(device));
+                    data.ensure_pipeline_created(device, texture_format, shader_code);
                     queue.write_buffer(&data.uniform_buffer, 0, &buffer);
                     vec![]
                 })
                 .paint(move |_info, pass, type_map| {
                     let Some(render_data) = type_map.get::<RenderData>() else {return};
 
-                    pass.set_pipeline(render_data.pipelines.get(&fractal_d).unwrap());
+                    pass.set_pipeline(render_data.pipelines.get(&shader_code).unwrap());
                     pass.set_bind_group(0, &render_data.bind_group, &[]);
 
                     // vertex coordinates are hardcoded in the shader so a vertex buffer is not needed
@@ -124,7 +126,7 @@ impl Visualizer {
 }
 
 impl RenderData {
-    pub fn new(device: &Device, texture_format: TextureFormat) -> Self {
+    pub fn new(device: &Device) -> Self {
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Visualizer bind group layout"),
@@ -162,12 +164,23 @@ impl RenderData {
             push_constant_ranges: &[],
         });
 
-        let pipelines = HashMap::from_iter(SHADERS.iter().map(|(kind, shader)| {
-            let shader_module = device.create_shader_module(shader.to_owned());
+        Self {
+            uniform_buffer,
+            bind_group,
+            pipeline_layout,
+            pipelines: HashMap::new(),
+        }
+    }
 
-            let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor{
-                label: Some(&format!("Pipeline visualizer {kind:?}")),
-                layout: Some(&pipeline_layout),
+    fn ensure_pipeline_created(&mut self, device: &Device, texture_format: TextureFormat, shader_code: ShaderCode) {
+        let descriptor = shader_code.get_shader();
+        let label=  format!("Pipeline visualizer {:?}", descriptor.label);
+        let shader_module = device.create_shader_module(descriptor);
+
+        self.pipelines.entry(shader_code).or_insert_with(||
+            device.create_render_pipeline(&RenderPipelineDescriptor {
+                label: Some(&label),
+                layout: Some(&self.pipeline_layout),
                 vertex: VertexState {
                     module: &shader_module,
                     entry_point: "vertex",
@@ -176,7 +189,7 @@ impl RenderData {
                 fragment: Some(FragmentState {
                     module: &shader_module,
                     entry_point: "fragment",
-                    targets: &[Some(ColorTargetState{
+                    targets: &[Some(ColorTargetState {
                         format: texture_format,
                         blend: None,
                         write_mask: ColorWrites::ALL,
@@ -186,14 +199,7 @@ impl RenderData {
                 depth_stencil: None,
                 multisample: MultisampleState::default(),
                 multiview: None,
-            });
-            (kind.to_owned(), pipeline)
-        }));
-
-        Self {
-            uniform_buffer,
-            bind_group,
-            pipelines,
-        }
+            })
+        );
     }
 }

@@ -1,7 +1,9 @@
-use eframe::egui::{DragValue, TextEdit, Ui, Widget};
+use std::fmt::{Display, Formatter};
+use eframe::egui::{ComboBox, DragValue, TextEdit, Ui, Widget};
 use encase::{ShaderType, UniformBuffer};
 use rand::{Rng, thread_rng};
 use crate::fractal::FractalTrait;
+use crate::wgsl::{LyapunovVariant, ShaderCode};
 
 // todo: other functions?
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -9,6 +11,8 @@ pub struct Lyapunov {
     iterations: u32,
     /// must only contain 'A', 'a', 'B'. 'b'; max length is 16
     sequence: String,
+    variant: LyapunovVariant,
+    // todo: c: f32
 }
 
 #[derive(ShaderType)]
@@ -24,7 +28,8 @@ impl Default for Lyapunov {
     fn default() -> Self {
         Self {
             iterations: 300,
-            sequence: String::from("AB")
+            sequence: String::from("AB"),
+            variant: LyapunovVariant::LogisticMap,
         }
     }
 }
@@ -34,6 +39,21 @@ impl FractalTrait for Lyapunov {
         ui.horizontal(|ui|{
             ui.label("Iterations");
             DragValue::new(&mut self.iterations).speed(1).clamp_range(0..=3000).ui(ui);
+        });
+
+        ui.horizontal(|ui|{
+            ui.label("Function");
+            use LyapunovVariant as LV;
+            let variants = [LV::LogisticMap, LV::SinMap, LV::GaussMap, LV::Exponential, LV::CircleMap1, LV::CircleMap2];
+            ComboBox::from_id_source("variant selector")
+                .selected_text(self.variant.to_string())
+                .show_ui( ui, |ui| {
+                    for variant in variants {
+                        if ui.selectable_label(self.variant == variant, variant.to_string()).clicked() {
+                            self.variant = variant;
+                        }
+                    }
+                });
         });
 
         ui.label("Sequence (A and B only)");
@@ -61,6 +81,8 @@ impl FractalTrait for Lyapunov {
         ui.label("todo"); // todo
     }
 
+    fn get_shader_code(&self) -> ShaderCode { ShaderCode::Lyapunov(self.variant) }
+
     fn fill_uniform_buffer(&self, mut buffer: UniformBuffer<&mut [u8]>) {
         let (seq_len, sequence) = if self.sequence.is_empty() {
             (2u32, 0b10) // default AB sequence
@@ -82,5 +104,18 @@ impl FractalTrait for Lyapunov {
             seq_len,
             sequence,
         }).unwrap();
+    }
+}
+
+impl Display for LyapunovVariant {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LyapunovVariant::LogisticMap => write!(f, "Logistic map"),
+            LyapunovVariant::SinMap =>      write!(f, "Sine Map"),
+            LyapunovVariant::GaussMap =>    write!(f, "Gauss Map"),
+            LyapunovVariant::Exponential => write!(f, "Exponential"),
+            LyapunovVariant::CircleMap1 =>  write!(f, "Circle Map"),
+            LyapunovVariant::CircleMap2 =>  write!(f, "Circle Map (alt)"),
+        }
     }
 }

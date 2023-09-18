@@ -10,4 +10,5 @@ proc-macro = true
 proc-macro2 = { version = "1.0.66", features = ["nightly"]  }
 syn = { version = "2.0.29", features = ["full"] } # todo: is full needed?
 quote = "1.0.33"
+# todo: naga_oil uses naga v0.13 while wgpu uses an older version
 naga_oil = "0.9.0"
