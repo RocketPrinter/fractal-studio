@@ -3,7 +3,7 @@ struct VertexOut {
     @location(0) uv: vec2<f32>,
 };
 
-struct Constants {
+struct Props {
     scale: vec2<f32>,
     offset: vec2<f32>,
 
@@ -22,24 +22,24 @@ var<private> v_positions: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
 );
 
 @group(0) @binding(0)
-var<uniform> constants: Constants;
+var<uniform> props: Props;
 
 @vertex
 fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.position = vec4(v_positions[v_idx], 0.0, 1.0);
-    out.uv = (v_positions[v_idx] + constants.offset) * constants.scale;
+    out.uv = (v_positions[v_idx] + props.offset) * props.scale;
     return out;
 }
 
 @fragment
 fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
     var iterations = compute_iterations(in.uv);
-    return vec4(vec3(f32(iterations - 1u) / f32(constants.max_iterations - 1u)), 1.0);
+    return vec4(vec3(f32(iterations - 1u) / f32(props.max_iterations - 1u)), 1.0);
 }
 
 fn compute_iterations(c: vec2<f32>) -> u32 {
-    if (constants.e == 2.) {
+    if (props.e == 2.) {
         return compute_iterations_simple(c);
     } else {
         return compute_iterations_generalized(c);
@@ -53,7 +53,7 @@ fn compute_iterations_simple(c: vec2<f32>) -> u32 {
     var z = vec2<f32>();
     var z2 = vec2<f32>(); // contains z.x^2 and z.y^2 not the square of the complex number
     var w = 0.;
-    while z2.x + z2.y <= 4. && iterations < constants.max_iterations {
+    while z2.x + z2.y <= 4. && iterations < props.max_iterations {
         z.x = z2.x - z2.y + c.x;
         z.y = w - z2.x - z2.y + c.y;
         z2 = z * z;
@@ -70,8 +70,8 @@ fn compute_iterations_generalized(c: vec2<f32>) -> u32 {
     var iterations = 0u;
     var z = vec2<f32>();
     var w = 0.;
-    while z.x * z.x + z.y * z.y <= 4. && iterations < constants.max_iterations {
-        z = cpowf(z, constants.e) + c;
+    while z.x * z.x + z.y * z.y <= 4. && iterations < props.max_iterations {
+        z = cpowf(z, props.e) + c;
         iterations += 1u;
     }
     return iterations;

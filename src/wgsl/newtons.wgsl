@@ -3,7 +3,7 @@ struct VertexOut {
     @location(0) uv: vec2<f32>,
 };
 
-struct Constants {
+struct Props {
     scale: vec2<f32>, //0..8
     offset: vec2<f32>,//8..16
 
@@ -40,13 +40,13 @@ var<private> root_colors: array<vec4<f32>, 5> = array<vec4<f32>, 5>(
 );
 
 @group(0) @binding(0)
-var<uniform> constants: Constants;
+var<uniform> props: Props;
 
 @vertex
 fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.position = vec4<f32>(v_positions[v_idx], 0.0, 1.0);
-    out.uv = (v_positions[v_idx] + constants.offset) * constants.scale;
+    out.uv = (v_positions[v_idx] + props.offset) * props.scale;
     return out;
 }
 
@@ -64,23 +64,23 @@ fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
 // will return -1 if it's not close enough to any of the roots and the root index otherwise
 fn newtons_method(z: vec2<f32>) -> i32 {
     var z = z;
-    for(var iteration = 0u; iteration < constants.max_iterations; iteration++) {
+    for(var iteration = 0u; iteration < props.max_iterations; iteration++) {
         var zp = vec2(1.,0.);
         var prev = vec2<f32>();
         var f = vec2<f32>();
         var fd = vec2<f32>();
         for (var i=0;i<=5;i++) {
-            let coef = constants.arr[i].coefficient;
+            let coef = props.arr[i].coefficient;
             f += cmul(coef, zp);
             fd += cmul(coef, prev) * f32(i);
             prev = zp;
-            zp = cmul(cmul(constants.a,zp), z) + constants.c;
+            zp = cmul(cmul(props.a,zp), z) + props.c;
         }
         z = z - cdiv(f,fd);
     }
-    var closest_root = -1; var closest_dist = constants.threshold;
-    for (var i=0u;i<constants.nr_roots;i++) {
-        let d = distance(z,constants.arr[i].root);
+    var closest_root = -1; var closest_dist = props.threshold;
+    for (var i=0u;i<props.nr_roots;i++) {
+        let d = distance(z,props.arr[i].root);
         if (d < closest_dist) {
             closest_root = i32(i);
             closest_dist = d;

@@ -3,7 +3,7 @@ struct VertexOut {
     @location(0) uv: vec2<f32>,
 };
 
-struct Constants {
+struct Props {
     scale: vec2<f32>,
     offset: vec2<f32>,
 
@@ -24,13 +24,13 @@ var<private> v_positions: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
 );
 
 @group(0) @binding(0)
-var<uniform> constants: Constants;
+var<uniform> props: Props;
 
 @vertex
 fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.position = vec4<f32>(v_positions[v_idx], 0.0, 1.0);
-    out.uv = (v_positions[v_idx] + constants.offset) * constants.scale;
+    out.uv = (v_positions[v_idx] + props.offset) * props.scale;
     return out;
 }
 
@@ -38,11 +38,11 @@ fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 @fragment
 fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
     let iterations = compute_iterations(in.uv);
-    return vec4(vec3(f32(iterations) / f32(constants.max_iterations)), 1.0);
+    return vec4(vec3(f32(iterations) / f32(props.max_iterations)), 1.0);
 }
 
 fn compute_iterations(c: vec2<f32>) -> u32 {
-    if (constants.e == 2.) {
+    if (props.e == 2.) {
         return compute_iterations_simple(c);
     } else {
         return compute_iterations_generalized(c);
@@ -55,9 +55,9 @@ fn compute_iterations_simple(z: vec2<f32>) -> u32 {
     var iterations = 0u;
     var z = z;
     var z2 = vec2(z.x * z.x, z.y * z.y); // contains z.x^2 and z.y^2 not the square of the complex number
-    let r_sq = constants.escape_radius * constants.escape_radius;
-    while (z2.x + z2.y < r_sq  && iterations < constants.max_iterations) {
-        z = vec2(z2.x - z2.y + constants.c.x, 2. * z.x * z.y + constants.c.y);
+    let r_sq = props.escape_radius * props.escape_radius;
+    while (z2.x + z2.y < r_sq  && iterations < props.max_iterations) {
+        z = vec2(z2.x - z2.y + props.c.x, 2. * z.x * z.y + props.c.y);
         z2 = vec2(z.x * z.x, z.y * z.y);
         iterations++;
     }
@@ -68,9 +68,9 @@ fn compute_iterations_simple(z: vec2<f32>) -> u32 {
 fn compute_iterations_generalized(z: vec2<f32>) -> u32 {
     var iterations = 0u;
     var z = z;
-    let r_sq = constants.escape_radius * constants.escape_radius;
-    while (z.x * z.x + z.y * z.y < r_sq  && iterations < constants.max_iterations) {
-        z = cpowf(z, constants.e) + constants.c;
+    let r_sq = props.escape_radius * props.escape_radius;
+    while (z.x * z.x + z.y * z.y < r_sq  && iterations < props.max_iterations) {
+        z = cpowf(z, props.e) + props.c;
         iterations++;
     }
     return iterations;
