@@ -3,7 +3,7 @@ use eframe::egui::{ComboBox, DragValue, TextEdit, Ui, Widget};
 use encase::{ShaderType, UniformBuffer};
 use rand::{Rng, thread_rng};
 use crate::fractal::FractalTrait;
-use crate::wgsl::{LyapunovCode, ShaderCode};
+use crate::wgsl::{LyapunovShader, Shader};
 
 // todo: other functions?
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -11,7 +11,7 @@ pub struct Lyapunov {
     iterations: u32,
     /// must only contain 'A', 'a', 'B'. 'b'; max length is 16
     sequence: String,
-    variant: LyapunovCode,
+    variant: LyapunovShader,
     // todo: c: f32
 }
 
@@ -29,7 +29,7 @@ impl Default for Lyapunov {
         Self {
             iterations: 300,
             sequence: String::from("AB"),
-            variant: LyapunovCode::LogisticMap,
+            variant: LyapunovShader::LogisticMap,
         }
     }
 }
@@ -43,7 +43,7 @@ impl FractalTrait for Lyapunov {
 
         ui.horizontal(|ui|{
             ui.label("Function");
-            use LyapunovCode as LC;
+            use LyapunovShader as LC;
             let variants = [LC::LogisticMap, LC::SinMap, LC::GaussMap, LC::Exponential, LC::CircleMap1, LC::CircleMap2];
             ComboBox::from_id_source("variant selector")
                 .selected_text(self.variant.to_string())
@@ -81,7 +81,7 @@ impl FractalTrait for Lyapunov {
         ui.label("todo"); // todo
     }
 
-    fn get_shader_code(&self) -> ShaderCode { ShaderCode::Lyapunov(self.variant) }
+    fn get_shader_code(&self) -> Shader { Shader::Lyapunov(self.variant) }
 
     fn fill_uniform_buffer(&self, mut buffer: UniformBuffer<&mut [u8]>) {
         let (seq_len, sequence) = if self.sequence.is_empty() {
@@ -107,9 +107,9 @@ impl FractalTrait for Lyapunov {
     }
 }
 
-impl Display for LyapunovCode {
+impl Display for LyapunovShader {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        use LyapunovCode as LC;
+        use LyapunovShader as LC;
         match self {
             LC::LogisticMap => write!(f, "Logistic map"),
             LC::SinMap =>      write!(f, "Sine Map"),

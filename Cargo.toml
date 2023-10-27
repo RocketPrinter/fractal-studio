@@ -1,5 +1,5 @@
 [package]
-name = "fractal_visualizer"
+name = "fractal-studio"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,7 +10,7 @@ members = [
 ]
 
 [dependencies]
-fractal_visualizer_macros = { path = "macros" }
+fractal-studio-macros = { path = "macros" }
 
 #todo: update egui to 0.23
 eframe = { version = "0.22.0", default-features = false, features = [

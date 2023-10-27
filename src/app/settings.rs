@@ -48,7 +48,7 @@ impl Settings {
         SidePanel::right("settings_panel").show_animated( ctx, !self.hide, |ui| {
             ui.add_space(5.);
             ui.horizontal(|ui| {
-                ui.heading("Fractals");
+                ui.heading("Fractal Studio");
                 if Button::new("⏵").frame(false).ui(ui).clicked() {
                     self.hide = true;
                 }

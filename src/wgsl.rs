@@ -1,31 +1,30 @@
 use std::hash::{Hash};
 use eframe::wgpu::{ShaderModuleDescriptor, include_wgsl};
-use fractal_visualizer_macros::{wgsl_variants};
+use fractal_studio_macros::wgsl_variants;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub enum ShaderCode {
+pub enum Shader {
     TestGrid,
     Mandelbrot,
     Julia,
     Newtons,
-    Lyapunov(LyapunovCode),
+    Lyapunov(LyapunovShader),
 }
 
-impl ShaderCode {
+impl Shader {
     pub fn get_shader(self) -> ShaderModuleDescriptor<'static> {
         match self {
-            ShaderCode::TestGrid => include_wgsl!("wgsl/test_grid.wgsl"),
-            ShaderCode::Mandelbrot => include_wgsl!("wgsl/mandelbrot.wgsl"),
-            ShaderCode::Julia => include_wgsl!("wgsl/julia.wgsl"),
-            ShaderCode::Newtons => include_wgsl!("wgsl/newtons.wgsl"),
-            ShaderCode::Lyapunov(s) => s.get_shader(),
+            Shader::TestGrid => include_wgsl!("wgsl/test_grid.wgsl"),
+            Shader::Mandelbrot => include_wgsl!("wgsl/mandelbrot.wgsl"),
+            Shader::Julia => include_wgsl!("wgsl/julia.wgsl"),
+            Shader::Newtons => include_wgsl!("wgsl/newtons.wgsl"),
+            Shader::Lyapunov(s) => s.get_shader(),
         }
     }
 }
 
-
 wgsl_variants! {
-    pub variants LyapunovCode from "src/wgsl/lyapunov.wgsl" {
+    pub variants LyapunovShader from "src/wgsl/lyapunov.wgsl" {
         LogisticMap {FUNC: u32 = 0},
         SinMap      {FUNC: u32 = 1},
         GaussMap    {FUNC: u32 = 2},

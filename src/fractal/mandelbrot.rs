@@ -2,7 +2,7 @@ use eframe::egui::{DragValue, Slider, Ui, Widget};
 use encase::{ShaderType, UniformBuffer};
 use crate::app::widgets::option_checkbox;
 use crate::fractal::FractalTrait;
-use crate::wgsl::ShaderCode;
+use crate::wgsl::Shader;
 
 // todo: make Julia sets be a subtype of Mandelbrot
 // also add Burning Ship
@@ -57,7 +57,7 @@ impl FractalTrait for Mandelbrot {
         // todo
     }
 
-    fn get_shader_code(&self) -> ShaderCode { ShaderCode::Mandelbrot }
+    fn get_shader_code(&self) -> Shader { Shader::Mandelbrot }
 
     fn fill_uniform_buffer(&self, mut buffer: UniformBuffer<&mut [u8]>) {
         buffer.write(&MandelbrotUniform {

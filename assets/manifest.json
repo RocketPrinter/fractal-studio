@@ -1,6 +1,6 @@
 {
-  "name": "Fractal Visualizer",
-  "short_name": "fractal_visualizer",
+  "name": "Fractal Studio",
+  "short_name": "fractal-studio",
   "icons": [
     {
       "src": "./icon-256.png",

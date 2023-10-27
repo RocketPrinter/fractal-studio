@@ -1138,7 +1138,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fractal_visualizer"
+name = "fractal-studio"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1149,7 +1149,7 @@ dependencies = [
  "encase",
  "enum_dispatch",
  "env_logger",
- "fractal_visualizer_macros",
+ "fractal-studio-macros",
  "getrandom",
  "lazy_static",
  "log",
@@ -1165,7 +1165,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fractal_visualizer_macros"
+name = "fractal-studio-macros"
 version = "0.1.0"
 dependencies = [
  "naga_oil",

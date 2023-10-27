@@ -9,7 +9,7 @@ use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescri
 use crate::app::settings::{Settings};
 use crate::app::widgets::get_transparent_button_fill;
 use crate::fractal::{FractalDiscriminants, FractalTrait};
-use crate::wgsl::ShaderCode;
+use crate::wgsl::Shader;
 
 // todo: reset zoom and offset when changing fractal
 #[derive(Debug, Clone)]
@@ -24,7 +24,7 @@ pub struct RenderData {
     uniform_buffer: Buffer,
     bind_group: BindGroup,
     pipeline_layout: PipelineLayout,
-    pipelines: HashMap<ShaderCode,RenderPipeline>,
+    pipelines: HashMap<Shader,RenderPipeline>,
 }
 
 pub const UNIFORM_BUFFER_SIZE: u64 = 144;
@@ -172,7 +172,7 @@ impl RenderData {
         }
     }
 
-    fn ensure_pipeline_created(&mut self, device: &Device, texture_format: TextureFormat, shader_code: ShaderCode) {
+    fn ensure_pipeline_created(&mut self, device: &Device, texture_format: TextureFormat, shader_code: Shader) {
         let descriptor = shader_code.get_shader();
         let label=  format!("Pipeline visualizer {:?}", descriptor.label);
         let shader_module = device.create_shader_module(descriptor);

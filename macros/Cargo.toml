@@ -1,5 +1,5 @@
 [package]
-name = "fractal_visualizer_macros"
+name = "fractal-studio-macros"
 version = "0.1.0"
 edition = "2021"
 

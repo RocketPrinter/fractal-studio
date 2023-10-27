@@ -6,7 +6,7 @@ use encase::ShaderType;
 use crate::app::widgets::c32_ui_full;
 use crate::fractal::FractalTrait;
 use crate::math::{C32, UC32, vec2_to_c32};
-use crate::wgsl::ShaderCode;
+use crate::wgsl::Shader;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Newtons {
@@ -115,7 +115,7 @@ impl FractalTrait for Newtons {
         // todo
     }
 
-    fn get_shader_code(&self) -> ShaderCode { ShaderCode::Newtons }
+    fn get_shader_code(&self) -> Shader { Shader::Newtons }
 
     fn fill_uniform_buffer(&self, buffer: UniformBuffer<&mut [u8]>) {
         let mut polynomial_coef: [C32; 6] = [nalgebra::zero();6];
