@@ -1,9 +1,6 @@
 use std::hash::{Hash};
 use eframe::wgpu::{ShaderModuleDescriptor, include_wgsl};
-use lazy_static::lazy_static;
-use fractal_visualizer_macros::include_wgsl_variants;
-use crate::fractal::FractalDiscriminants;
-use crate::fractal::FractalDiscriminants::*;
+use fractal_visualizer_macros::{wgsl_variants};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum ShaderCode {
@@ -11,7 +8,7 @@ pub enum ShaderCode {
     Mandelbrot,
     Julia,
     Newtons,
-    Lyapunov(LyapunovVariant),
+    Lyapunov(LyapunovCode),
 }
 
 impl ShaderCode {
@@ -26,13 +23,14 @@ impl ShaderCode {
     }
 }
 
-include_wgsl_variants! {
-    pub variants LyapunovVariant from "src/wgsl/lyapunov.wgsl" {
-        LogisticMap: {FUNC: u32 = 0},
-        SinMap:      {FUNC: u32 = 1},
-        GaussMap:    {FUNC: u32 = 2},
-        Exponential: {FUNC: u32 = 3},
-        CircleMap1:  {FUNC: u32 = 4},
-        CircleMap2:  {FUNC: u32 = 5},
+
+wgsl_variants! {
+    pub variants LyapunovCode from "src/wgsl/lyapunov.wgsl" {
+        LogisticMap {FUNC: u32 = 0},
+        SinMap      {FUNC: u32 = 1},
+        GaussMap    {FUNC: u32 = 2},
+        Exponential {FUNC: u32 = 3},
+        CircleMap1  {FUNC: u32 = 4},
+        CircleMap2  {FUNC: u32 = 5},
     }
 }

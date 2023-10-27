@@ -3,7 +3,7 @@ use eframe::egui::{ComboBox, DragValue, TextEdit, Ui, Widget};
 use encase::{ShaderType, UniformBuffer};
 use rand::{Rng, thread_rng};
 use crate::fractal::FractalTrait;
-use crate::wgsl::{LyapunovVariant, ShaderCode};
+use crate::wgsl::{LyapunovCode, ShaderCode};
 
 // todo: other functions?
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -11,7 +11,7 @@ pub struct Lyapunov {
     iterations: u32,
     /// must only contain 'A', 'a', 'B'. 'b'; max length is 16
     sequence: String,
-    variant: LyapunovVariant,
+    variant: LyapunovCode,
     // todo: c: f32
 }
 
@@ -29,7 +29,7 @@ impl Default for Lyapunov {
         Self {
             iterations: 300,
             sequence: String::from("AB"),
-            variant: LyapunovVariant::LogisticMap,
+            variant: LyapunovCode::LogisticMap,
         }
     }
 }
@@ -43,8 +43,8 @@ impl FractalTrait for Lyapunov {
 
         ui.horizontal(|ui|{
             ui.label("Function");
-            use LyapunovVariant as LV;
-            let variants = [LV::LogisticMap, LV::SinMap, LV::GaussMap, LV::Exponential, LV::CircleMap1, LV::CircleMap2];
+            use LyapunovCode as LC;
+            let variants = [LC::LogisticMap, LC::SinMap, LC::GaussMap, LC::Exponential, LC::CircleMap1, LC::CircleMap2];
             ComboBox::from_id_source("variant selector")
                 .selected_text(self.variant.to_string())
                 .show_ui( ui, |ui| {
@@ -107,15 +107,16 @@ impl FractalTrait for Lyapunov {
     }
 }
 
-impl Display for LyapunovVariant {
+impl Display for LyapunovCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use LyapunovCode as LC;
         match self {
-            LyapunovVariant::LogisticMap => write!(f, "Logistic map"),
-            LyapunovVariant::SinMap =>      write!(f, "Sine Map"),
-            LyapunovVariant::GaussMap =>    write!(f, "Gauss Map"),
-            LyapunovVariant::Exponential => write!(f, "Exponential"),
-            LyapunovVariant::CircleMap1 =>  write!(f, "Circle Map"),
-            LyapunovVariant::CircleMap2 =>  write!(f, "Circle Map (alt)"),
+            LC::LogisticMap => write!(f, "Logistic map"),
+            LC::SinMap =>      write!(f, "Sine Map"),
+            LC::GaussMap =>    write!(f, "Gauss Map"),
+            LC::Exponential => write!(f, "Exponential"),
+            LC::CircleMap1 =>  write!(f, "Circle Map"),
+            LC::CircleMap2 =>  write!(f, "Circle Map (alt)"),
         }
     }
 }

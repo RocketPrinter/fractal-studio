@@ -1,190 +1,114 @@
-#![allow(clippy::redundant_closure)]
-
-use proc_macro::{TokenStream};
-use std::collections::HashMap;
-use std::fs::read_to_string;
+use proc_macro::TokenStream;
 use std::path::PathBuf;
-use naga_oil::compose::preprocess::Preprocessor;
 use naga_oil::compose::ShaderDefValue;
-use quote::quote;
-use syn::parse::{Parse, ParseStream};
-use syn::{braced, Ident, LitBool, LitStr, parse_macro_input, Token, Visibility};
-use syn::spanned::Spanned;
+use proc_macro2::Ident;
+use quote::TokenStreamExt;
+use syn::{parse_macro_input, Visibility};
+use syn::__private::TokenStream2;
+use crate::codegen::{value_enum_decl_to_tokens, variants_decl_to_tokens};
+
+mod parsing;
+mod codegen;
+
+// todo: a lot of work went into this so it might as well be made public in a crate
+/// Preprocessor macro that generates multiple variants from the same shader file using [naga_oil](https://github.com/bevyengine/naga_oil)
+///```
+///wgsl_variants!{
+///    // used to enumerate the possible values of a shader def value
+///    value_enum OWO: i32 {
+///        A = 2,
+///        B = -5,
+///    }
+///
+///    // the "X as Y" allows different naming schemes on the rust and wgsl sides (CAPS vs PascalCase for example)
+///    value_enum UWU as Uwu: u32 {
+///        A = 69,
+///        B = 420,
+///    }
+///
+///    pub variants Shader from "src/wgsl/file.wgsl" {
+///        // applies to all variants, used mainly for default values
+///        shared {
+///            FOO: bool = true,
+///        },
+///        // variant with hardcoded values
+///        Variant1 {
+///            BAR: u32 = 69,
+///        },
+///        Variant2 {
+///            FOO: bool = false,
+///            BAZ: i32 = true,
+///        },
+///        // generates 2 variants, one where OWO is 2 and one where OWO is -5
+///        Variant3 (OWO)
+///        // cross product of OWO and UWU, so it generates 4 variants
+///        Variant4 (OWO, UWU),
+///    }
+///}
+///```
+#[proc_macro]
+pub fn wgsl_variants(input: TokenStream) -> TokenStream {
+    let data = parse_macro_input!(input as WgslVariants);
+
+    let mut output = TokenStream2::new();
+
+    output.append_all(
+        data.value_enum_decls.iter().map(value_enum_decl_to_tokens)
+    );
+
+    output.append_all(
+        data.variants_decls.into_iter()
+            .map(|d|variants_decl_to_tokens(d, data.value_enum_decls.as_slice()))
+    );
+
+    TokenStream::from(output)
+}
 
 #[derive(Debug)]
-struct IncludeWgslVariants {
+struct WgslVariants {
+    value_enum_decls: Vec<ValueEnumDeclaration>,
+    variants_decls: Vec<VariantsDeclaration>,
+}
+
+#[derive(Debug)]
+struct ValueEnumDeclaration {
+    // it's up to the user to ensure the generated enums have the right visibility
+    vis: Visibility,
+    name: Ident,
+    codegen_name: Option<Ident>,
+    v_type: ShaderDefValueType,
+    values: Vec<(Ident, ShaderDefValue)>,
+}
+
+#[derive(Debug)]
+struct VariantsDeclaration {
     vis: Visibility,
     name: Ident,
     path: PathBuf,
-    shared_defs: Option<HashMap<String, ShaderDefValue>>,
+    shared: Option<Vec<(Ident, ShaderDefValue)>>,
     variants: Vec<Variant>,
 }
 
 #[derive(Debug)]
-struct Variant {
-    name: String,
-    defs: HashMap<String, ShaderDefValue>,
+enum Variant {
+    HardCoded {
+        name: Ident,
+        kvp: Vec<(Ident, ShaderDefValue)>,
+    },
+    CrossProduct {
+        name: Ident,
+        value_enums: Vec<Ident>,
+    },
 }
 
-//region ###PARSING###
-impl Parse for IncludeWgslVariants {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let vis = input.parse::<Visibility>()?;
-        parse_str_ident(input, "variants")?;
-        let name = input.parse::<Ident>()?;
-        parse_str_ident(input, "from")?;
-        let path_end = input.parse::<LitStr>()?.value();
-        let mut path = std::env::current_dir().unwrap();
-        path.push(path_end);
-
-        let inner_input;
-        braced!(inner_input in input);
-
-        let mut shared_defs = None;
-        let mut variants = vec![];
-        while !inner_input.is_empty() {
-            let variant = parse_variant(&inner_input)?;
-            if variant.name == "shared" {
-                shared_defs = Some(variant.defs);
-            }
-            else {
-                variants.push(variant);
-            }
-            if inner_input.is_empty() {break;}
-            inner_input.parse::<Token![,]>()?;
-        }
-
-        Ok(IncludeWgslVariants {
-            vis,
-            name,
-            path,
-            shared_defs,
-            variants,
-        })
+impl Variant {
+    pub fn get_name(&self) -> &Ident {
+        let (Variant::HardCoded { name, .. } | Variant::CrossProduct { name, .. }) = self;
+        name
     }
 }
 
-fn parse_str_ident(input: ParseStream, ident: &str) -> syn::Result<()> {
-    match input.parse::<Ident>()? == ident {
-        true => Ok(()),
-        false => Err(syn::Error::new(input.span(), format!("\"{}\" identifier expected", ident)))
-    }
-}
-
-fn parse_shader_def(input: ParseStream) -> syn::Result<(String,ShaderDefValue)> {
-    let name = input.parse::<Ident>()?.to_string();
-    input.parse::<Token![:]>()?;
-    let value = match input.parse::<Ident>()?.to_string().as_str() {
-        "bool" => {
-            input.parse::<Token![=]>()?;
-            let value = input.parse::<LitBool>()?;
-            ShaderDefValue::Bool(value.value)
-        },
-        "i32" => {
-            input.parse::<Token![=]>()?;
-            // suffix will be ignored
-            let value = input.parse::<syn::LitInt>()?.base10_parse::<i32>()?;
-            ShaderDefValue::Int(value)
-        },
-        "u32" => {
-            input.parse::<Token![=]>()?;
-            // suffix will be ignored
-            let value = input.parse::<syn::LitInt>()?.base10_parse::<u32>()?;
-            ShaderDefValue::UInt(value)
-        },
-        _ => Err(syn::Error::new(input.span(), "Expected bool, i32 or u32 as type of shader def"))?,
-    };
-    Ok((name, value))
-}
-
-fn parse_variant(input: ParseStream) -> syn::Result<Variant> {
-    let name = input.parse::<Ident>()?.to_string();
-    input.parse::<Token![:]>()?;
-
-    let defs_input;
-    braced!(defs_input in input);
-
-    let mut defs = HashMap::new();
-    while !defs_input.is_empty() {
-        let def = parse_shader_def(&defs_input)?;
-        defs.insert(def.0, def.1);
-        if defs_input.is_empty() { break; }
-        defs_input.parse::<Token![,]>()?;
-    }
-
-    Ok(Variant{
-        name, defs
-    })
-}
-//endregion
-
-/// ```
-///include_wgsl_variants!{
-///     pub variants Shader from "src/wgsl/file.wgsl" {
-///         shared: {
-///             Foo: bool = true,
-///         },
-///         Variant1 {
-///             Bar: u32 = 69,
-///         },
-///         Variant2 {
-///             Foo: bool = false,
-///             Baz: i32 = true,
-///         }
-///     }
-/// }
-/// ```
-#[proc_macro]
-pub fn include_wgsl_variants(input: TokenStream) -> TokenStream {
-    let IncludeWgslVariants { vis, name, path, shared_defs, variants } =
-        parse_macro_input!(input as IncludeWgslVariants);
-
-    println!("Processing macro {path:?}");
-    let file = read_to_string(&path).unwrap();
-    let preproc = Preprocessor::default();
-
-    let mut variant_names = vec![];
-    let mut variant_label = vec![];
-    let mut variant_shaders = vec![];
-    for Variant{ name: v_name, mut defs } in variants {
-        // we just need to merge the constant defs with the variant's defs
-        for (v_name, value) in shared_defs.iter().flatten() {
-            if !defs.contains_key(v_name) {
-                defs.insert(v_name.clone(), *value);
-            }
-        }
-
-        let output = preproc.preprocess(&file, &defs, false).unwrap().preprocessed_source;
-
-        variant_names.push(Ident::new(&v_name, v_name.span()));
-        variant_label.push(format!("{name}/{v_name}"));
-        variant_shaders.push(output);
-    };
-
-    let path = path.to_string_lossy();
-
-    let output = quote! {
-        #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-        #vis enum #name {
-            #(#variant_names,)*
-        }
-
-        impl #name {
-            #vis fn get_shader(self) -> wgpu::ShaderModuleDescriptor<'static> {
-                match self {
-                    #(Self::#variant_names => ShaderModuleDescriptor{
-                        label: Some(#variant_label),
-                        source: wgpu::ShaderSource::Wgsl(#variant_shaders.into())
-                    },)*
-                }
-            }
-
-            #vis fn get_raw_shader(self) -> &'static str {
-                // the include_str! forces the compiler to watch the file for changes and reruns the macro if any happen so this function is actually very important
-                include_str!(#path)
-            }
-        }
-    };
-
-    TokenStream::from(output)
+#[derive(Debug, Clone, Copy)]
+enum ShaderDefValueType {
+    Bool, I32, U32,
 }

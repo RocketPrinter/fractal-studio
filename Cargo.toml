@@ -10,6 +10,9 @@ members = [
 ]
 
 [dependencies]
+fractal_visualizer_macros = { path = "macros" }
+
+#todo: update egui to 0.23
 eframe = { version = "0.22.0", default-features = false, features = [
     "accesskit", "default_fonts", "wgpu", "persistence",
 ] }
@@ -32,7 +35,6 @@ enum_dispatch = "0.3.12"
 encase = { version = "0.6.1", features = ["nalgebra"] }
 nalgebra = { version = "0.32.3", features = ["serde-serialize", "convert-bytemuck"] }
 
-fractal_visualizer_macros = { path = "macros" }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
