@@ -16,6 +16,7 @@ fractal-studio-macros = { path = "macros" }
 eframe = { version = "0.22.0", default-features = false, features = [
     "accesskit", "default_fonts", "wgpu", "persistence",
 ] }
+egui_extras = "0.22.0"
 # version must match eframe's wgpu dependency
 wgpu = { version = "0.16.3", features = ["webgl"]}
 log = "0.4"
@@ -25,7 +26,6 @@ lazy_static = "1.4.0"
 type-map = "*"
 strum = { version = "0.25", features = ["derive"] }
 bytemuck = "1.13.1"
-egui_extras = "0.22.0"
 rand = "0.8.5"
 getrandom = { version = "*", features = ["js"] }
 rmp-serde = "1.1.2"
@@ -34,7 +34,6 @@ url = "2.4.0"
 enum_dispatch = "0.3.12"
 encase = { version = "0.6.1", features = ["nalgebra"] }
 nalgebra = { version = "0.32.3", features = ["serde-serialize", "convert-bytemuck"] }
-
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

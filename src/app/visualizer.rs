@@ -8,7 +8,7 @@ use encase::UniformBuffer;
 use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages, PipelineLayout};
 use crate::app::settings::{Settings};
 use crate::app::widgets::get_transparent_button_fill;
-use crate::fractal::{FractalDiscriminants, FractalTrait};
+use crate::fractal::{ FractalTrait};
 use crate::wgsl::Shader;
 
 // todo: reset zoom and offset when changing fractal
@@ -79,7 +79,7 @@ impl Visualizer {
         settings.fractal.fill_uniform_buffer(settings_buffer);
 
         // rendering
-        let shader_code = settings.fractal.get_shader_code();
+        let shader_code = settings.fractal.get_shader();
         let texture_format = self.texture_format;
         painter.add(PaintCallback {
             rect: painter.clip_rect(),

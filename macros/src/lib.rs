@@ -61,6 +61,8 @@ pub fn wgsl_variants(input: TokenStream) -> TokenStream {
             .map(|d|variants_decl_to_tokens(d, data.value_enum_decls.as_slice()))
     );
 
+    //println!("{}", output);
+
     TokenStream::from(output)
 }
 
@@ -78,6 +80,12 @@ struct ValueEnumDeclaration {
     codegen_name: Option<Ident>,
     v_type: ShaderDefValueType,
     values: Vec<(Ident, ShaderDefValue)>,
+}
+
+impl ValueEnumDeclaration {
+    pub fn get_codegen_name(&self) -> &Ident {
+        self.codegen_name.as_ref().unwrap_or(&self.name)
+    }
 }
 
 #[derive(Debug)]

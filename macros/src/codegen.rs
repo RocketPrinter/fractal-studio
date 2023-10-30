@@ -2,8 +2,8 @@ use std::fs::read_to_string;
 use std::collections::{HashMap};
 use naga_oil::compose::preprocess::Preprocessor;
 use naga_oil::compose::ShaderDefValue;
-use proc_macro2::{TokenStream, Ident};
-use quote::{format_ident, quote, TokenStreamExt};
+use proc_macro2::{TokenStream};
+use quote::{format_ident, quote};
 use syn::spanned::Spanned;
 use syn::{Lit, LitBool, LitInt};
 use crate::{ShaderDefValueType, ValueEnumDeclaration, VariantsDeclaration, Variant};
@@ -25,9 +25,10 @@ pub(super) fn value_enum_decl_to_tokens(decl: &ValueEnumDeclaration) -> TokenStr
 
     let names = values.iter().map(|(name,_)|name);
     let names2 = names.clone();
+    let names3 = names.clone();
     let values = values.iter().map(|(_, value)|{
         shader_def_val_to_tokens(value)
-    });
+    }).collect::<Vec<_>>();
 
     quote!{
         #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -40,6 +41,17 @@ pub(super) fn value_enum_decl_to_tokens(decl: &ValueEnumDeclaration) -> TokenStr
                 match self {
                     #(Self::#names2=>#values,)*
                 }
+            }
+        }
+
+        impl TryFrom<#kind> for #name {
+            type Error = ();
+
+            fn try_from(value: #kind) -> Result<Self, Self::Error> {
+                Ok(match value {
+                    #(#values=>Self::#names3,)*
+                    _ => return Err(())
+                })
             }
         }
     }
@@ -65,63 +77,69 @@ pub(super) fn variants_decl_to_tokens(decl: VariantsDeclaration, value_enum_decl
         defs.extend(shared.iter().flatten().map(|(a, b)| (a.to_string(), *b)));
 
         match variant {
-            Variant::HardCoded { name, kvp } => {
+            Variant::HardCoded { name: variant_name, kvp } => {
                 defs.extend(kvp.into_iter().map(|(a, b)| (a.to_string(), b)));
 
-                variant_decls.extend( quote! {#name,});
+                variant_decls.extend( quote! {#variant_name,});
 
                 let source = preproc.preprocess(&file, &defs, false).unwrap().preprocessed_source;
                 // todo: labels
-                match_arms.extend(quote! {Self::#name => ShaderModuleDescriptor {label:None, source: wgpu::ShaderSource::Wgsl(#source.into())},});
+                match_arms.extend(quote! {Self::#variant_name => ShaderModuleDescriptor {label:None, source: wgpu::ShaderSource::Wgsl(#source.into())},});
             }
 
-            Variant::CrossProduct { name, value_enums } => {
+            Variant::CrossProduct { name: variant_name, value_enums } => {
                 let value_enums = value_enums.iter().map(|name| {
-                    let Some(v) = value_enum_decls.iter().find(|v| v.name == *name) else {
+                    let Some(v) = value_enum_decls.iter().find(|v| v.get_codegen_name() == name) else {
                         panic!("enum_value {name} is not defined.");
                     };
                     v
                 }).collect::<Vec<_>>();
 
-                let value_enum_types = value_enums.iter().map(|value_enum| &value_enum.name);
-                variant_decls.extend( quote! {#name(#(#value_enum_types,)*,),});
+                let value_enum_types = value_enums.iter()
+                    .map(|value_enum| value_enum.get_codegen_name());
+                variant_decls.extend( quote! {#variant_name(#(#value_enum_types,)*),});
 
-                let mut match_arms = TokenStream::new();
-                generate_combinations(&value_enums, &mut vec![], &preproc, &file, &name, &mut defs, &mut match_arms);
+                // populate with initial values
+                defs.extend(value_enums.iter().map(|value_enum|
+                    ( value_enum.name.to_string(), value_enum.values[0].1)
+                ));
 
-                // recursively generates all the possible combinations and writes them to the TokenStream
-                fn generate_combinations(value_enums: &[&ValueEnumDeclaration], value_enum_indexes: &mut Vec<usize>,
-                                         preproc: &Preprocessor, file: &str, variant_name: &Ident, defs: &mut HashMap<String, ShaderDefValue>,
-                                         output_stream: &mut TokenStream) {
-                    if value_enum_indexes.len() == value_enums.len() {
-                        let source = preproc.preprocess(file, defs, false).unwrap().preprocessed_source;
-                        let values = value_enum_indexes.iter().zip(value_enums.iter()).map(|(i, value_enum)| {
-                            shader_def_val_to_tokens(&value_enum.values[*i].1)
-                        });
+                // value_enum_indexes is like a number where each "digit" has a separate base, so to generate all the possible combinations we just repeatedly "add one"
+                let mut value_enum_indexes = vec![0;value_enums.len()];
+                let value_enum_keys = value_enums.iter().map(|ve|ve.name.to_string()).collect::<Vec<_>>();
+                'outer: loop {
 
-                        // Variant (values...) => output,
-                        // todo: labels
-                        output_stream.extend(quote! { #variant_name( #(#values)* ) => ShaderModuleDescriptor {label:None, source: wgpu::ShaderSource::Wgsl(#source.into())}, });
+                    let source = preproc.preprocess(file.as_str(), &defs, false).unwrap().preprocessed_source;
 
-                        return;
+                    let values = value_enum_indexes.iter().zip(value_enums.iter()).map(|(i, value_enum)| {
+                        let enum_type = value_enum.get_codegen_name();
+                        let enum_variant = &value_enum.values[*i].0;
+
+                        quote!{#enum_type::#enum_variant}
+                    });
+
+                    // Variant (Value_enum::value, ...) => output,
+                    // todo: labels
+                    match_arms.extend(quote! { Self::#variant_name( #(#values,)* ) => ShaderModuleDescriptor {label:None, source: wgpu::ShaderSource::Wgsl(#source.into())}, });
+
+                    let mut index = value_enums.len()-1;
+                    loop {
+                        let value_enum = value_enums[index];
+                        if value_enum_indexes[index] + 1 == value_enums[index].values.len() {
+                            // "carry" to next "digit" or break if index is 0 (we generated all the possible values)
+                            if index == 0 {break 'outer}
+                            value_enum_indexes[index] = 0;
+                            *defs.get_mut(value_enum_keys[index].as_str()).unwrap() = value_enum.values[0].1;
+                            index -=1;
+                        } else {
+                            // increase just this one and continue generating
+                            value_enum_indexes[index] += 1;
+                            *defs.get_mut(value_enum_keys[index].as_str()).unwrap() = value_enum.values[value_enum_indexes[index]].1;
+                            break;
+                        }
                     }
-
-                    let i = value_enum_indexes.len();
-                    let value_enum = value_enums[i];
-                    defs.insert(value_enum.name.to_string(), ShaderDefValue::Int(0));
-
-                    value_enum_indexes.push(0);
-                    for j in 0..value_enum.values.len() {
-                        let _ = defs.get_mut(&value_enum.name.to_string()).insert(&mut value_enum.values[j].1.clone());
-                        value_enum_indexes[i] = j;
-
-                        generate_combinations(value_enums, value_enum_indexes,
-                                              preproc, file, variant_name, defs,
-                                              output_stream);
-                    }
-                    value_enum_indexes.pop();
                 }
-            },
+            }
         }
     }
 

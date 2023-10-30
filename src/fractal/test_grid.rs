@@ -9,5 +9,5 @@ impl FractalTrait for TestGrid {
     fn explanation_ui(&mut self, ui: &mut Ui) {
         ui.label("This is a test grid.");
     }
-    fn get_shader_code(&self) -> Shader { Shader::TestGrid }
+    fn get_shader(&self) -> Shader { Shader::TestGrid }
 }

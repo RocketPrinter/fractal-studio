@@ -1,8 +1,7 @@
-mod test_grid;
-mod mandelbrot;
-mod julia;
-mod newtons;
-mod lyapunov;
+pub mod test_grid;
+pub mod mandelbrot;
+pub mod newtons;
+pub mod lyapunov;
 
 use eframe::egui::{Context, Painter, Ui, Vec2};
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
@@ -12,26 +11,22 @@ use encase::UniformBuffer;
 use enum_dispatch::enum_dispatch;
 use url::Url;
 use test_grid::TestGrid;
-use mandelbrot::Mandelbrot;
-use julia::Julia;
+use mandelbrot::MandelbrotFamily;
 use newtons::Newtons;
 use lyapunov::Lyapunov;
 use crate::wgsl::Shader;
 
 #[enum_dispatch]
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, EnumDiscriminants)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, EnumDiscriminants, EnumMessage)]
 #[strum_discriminants(derive(EnumIter, EnumMessage, Hash))]
 pub enum Fractal {
+    // --- Escape time ---
     /// Test Grid
     TestGrid,
     /// Mandelbrot Set
-    Mandelbrot,
-    /// Julia Set
-    Julia,
+    MandelbrotFamily,
     /// Newton's fractal
     Newtons,
-    // todo: Burning Ship
-    // todo: Burning Ship Julia
     /// Lyapunov's fractal
     Lyapunov,
 }
@@ -41,7 +36,7 @@ pub trait FractalTrait {
     fn override_label(&mut self) -> Option<&'static str> { None }
     fn settings_ui(&mut self, _ui: &mut Ui) { }
     fn explanation_ui(&mut self, _ui: &mut Ui) { }
-    fn get_shader_code(&self) -> Shader;
+    fn get_shader(&self) -> Shader;
     fn fill_uniform_buffer(&self, _buffer: UniformBuffer<&mut [u8]>) {}
     /// mouse_pos will be Some if the mouse is hovering over the visualizer
     fn draw_extra(&mut self, _painter: &Painter, _mouse_pos: Option<Vec2>, /* todo: 2x2 matrix that converts mouse pos to shader space? */) {}
@@ -49,21 +44,11 @@ pub trait FractalTrait {
 
 impl Default for Fractal {
     fn default() -> Self {
-        Self::new(FractalDiscriminants::Mandelbrot)
+        Self::MandelbrotFamily(MandelbrotFamily::default_mandelbrot())
     }
 }
 
 impl Fractal {
-    pub fn new(discriminant: FractalDiscriminants) -> Self {
-        match discriminant {
-            FractalDiscriminants::TestGrid => TestGrid::default().into(),
-            FractalDiscriminants::Mandelbrot => Mandelbrot::default().into(),
-            FractalDiscriminants::Julia => Julia::default().into(),
-            FractalDiscriminants::Newtons => Newtons::default().into(),
-            FractalDiscriminants::Lyapunov => Lyapunov::default().into(),
-        }
-    }
-
     pub fn to_code(&self) -> Result<String> {
         let serialized_code = rmp_serde::to_vec_named(self)?;
         Ok(BASE64_URL_SAFE_NO_PAD.encode(serialized_code))

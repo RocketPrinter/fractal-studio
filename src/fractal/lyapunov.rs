@@ -65,7 +65,7 @@ impl FractalTrait for Lyapunov {
                 let mut rng = thread_rng();
                 let mut bits: u16 = rng.gen();
                 self.sequence =
-                    (0..rng.gen_range(2..=16)).map(|i| {
+                    (0..rng.gen_range(2..=16)).map(|_| {
                         let b = bits & 1; bits >>= 1;
                         match b {
                         0 => 'A',
@@ -81,7 +81,7 @@ impl FractalTrait for Lyapunov {
         ui.label("todo"); // todo
     }
 
-    fn get_shader_code(&self) -> Shader { Shader::Lyapunov(self.variant) }
+    fn get_shader(&self) -> Shader { Shader::Lyapunov(self.variant) }
 
     fn fill_uniform_buffer(&self, mut buffer: UniformBuffer<&mut [u8]>) {
         let (seq_len, sequence) = if self.sequence.is_empty() {

@@ -1,9 +1,15 @@
+use std::default::Default;
 use eframe::egui;
 use eframe::egui::{Align2, Area, Button, CollapsingHeader, ComboBox, Id, RichText, SidePanel, TextEdit, Ui, vec2, Widget, Window};
-use strum::{EnumMessage, IntoEnumIterator};
+use egui_extras::{Size, StripBuilder};
+use strum::{EnumMessage};
 use crate::app::library::Library;
 use crate::app::widgets::dismissible_error;
 use crate::fractal::{Fractal, FractalDiscriminants, FractalTrait};
+use crate::fractal::lyapunov::Lyapunov;
+use crate::fractal::mandelbrot::MandelbrotFamily;
+use crate::fractal::newtons::Newtons;
+use crate::fractal::test_grid::TestGrid;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Settings {
@@ -54,11 +60,23 @@ impl Settings {
                 }
             });
             ui.separator();
-            self.ui(ui)
+
+            let height_id = ui.id().with("bottom_text_h");
+            let bottom_height = ui.data(|data|data.get_temp(height_id).unwrap_or_default());
+            StripBuilder::new(ui)
+                .size(Size::remainder())
+                .size(Size::exact(bottom_height))
+                .vertical(|mut strip| {
+                    strip.cell(|ui|self.main_ui(ui));
+                    strip.cell(|ui| {
+                        let new_height = bottom_text_ui(ui);
+                        ui.data_mut(|data|data.insert_temp(height_id, new_height));
+                    })
+                });
         });
     }
 
-    fn ui(&mut self, ui: &mut Ui) {
+    fn main_ui(&mut self, ui: &mut Ui) {
         let fractal_d = FractalDiscriminants::from(&self.fractal);
         let fractal_label = self.fractal.override_label().unwrap_or_else(|| fractal_d.get_documentation().unwrap_or_default());
         ui.horizontal(|ui|{
@@ -66,12 +84,28 @@ impl Settings {
             ComboBox::from_id_source("Fractal selector")
                 .selected_text(fractal_label)
                 .show_ui(ui, |ui| {
-                    // skip(1) skips TestGrid
-                    for iter_d in FractalDiscriminants::iter().skip(1) {
-                        if ui.selectable_label(fractal_d == iter_d, iter_d.get_documentation().unwrap_or_default()).clicked() {
-                            self.fractal = Fractal::new(iter_d);
-                        }
+                    use FractalDiscriminants as FD;
+                    ui.small("Escape time fractals");
+
+                    let is_julia =
+                        if let Fractal::MandelbrotFamily(m) = &self.fractal {m.is_julia()} else {false};
+
+                    if ui.selectable_label(fractal_d == FD::MandelbrotFamily && !is_julia, FD::MandelbrotFamily.get_documentation().unwrap_or_default()).clicked() {
+                        self.fractal = Fractal::MandelbrotFamily(MandelbrotFamily::default_mandelbrot());
                     }
+
+                    if ui.selectable_label(fractal_d == FD::MandelbrotFamily && is_julia, "Julia Set").clicked() {
+                        self.fractal = Fractal::MandelbrotFamily(MandelbrotFamily::default_julia());
+                    }
+
+                    if ui.selectable_label(fractal_d == FD::Newtons, FD::Newtons.get_documentation().unwrap_or_default()).clicked() {
+                        self.fractal = Fractal::Newtons(Newtons::default());
+                    }
+
+                    if ui.selectable_label(fractal_d == FD::Lyapunov, FD::Lyapunov.get_documentation().unwrap_or_default()).clicked() {
+                        self.fractal = Fractal::Lyapunov(Lyapunov::default());
+                    }
+                    ui.small("More coming soon...")
                 });
         });
 
@@ -134,19 +168,23 @@ impl Settings {
         CollapsingHeader::new(RichText::new("Debug").color(ui.style().visuals.weak_text_color())).show(ui,|ui| {
             ui.checkbox(&mut self.debug_label, "Debug label");
             if ui.button("Test grid").clicked() {
-                self.fractal = Fractal::new(FractalDiscriminants::TestGrid);
+                self.fractal = Fractal::TestGrid(TestGrid::default());
             }
         });
 
-        ui.horizontal_wrapped(|ui|{
-            ui.spacing_mut().item_spacing.x = 0.0;
-            ui.label("Powered by ");
-            ui.hyperlink_to("egui ","https://www.egui.rs/");
-            ui.label("and ");
-            ui.hyperlink_to("wgpu", "https://wgpu.rs/");
-            ui.label(". Check the source on ");
-            ui.hyperlink_to(" Github","https://github.com/RocketPrinter/fractal_visualizer");
-            ui.label(".")
-        });
+
     }
+}
+
+// returns the height of the widgets
+fn bottom_text_ui(ui: &mut Ui) -> f32 {
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
+        ui.label("Powered by ");
+        ui.hyperlink_to("egui ","https://www.egui.rs/");
+        ui.label("and ");
+        ui.hyperlink_to("wgpu. ", "https://wgpu.rs/");
+        ui.label("Check the source ");
+        ui.hyperlink_to("here.","https://github.com/RocketPrinter/fractal-studio");
+    }).response.rect.height() + 5.
 }

@@ -9,6 +9,7 @@ use eframe::{App, CreationContext, egui};
 use crate::app::settings::Settings;
 use crate::app::visualizer::Visualizer;
 
+// todo: ui scaling
 pub struct EguiApp {
     settings: Settings,
     visualizer: Visualizer,

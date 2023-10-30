@@ -14,6 +14,7 @@ pub struct Newtons {
     /// 1..=5 roots
     roots: Vec<C32>,
     /// u32 is the index of the root being picked
+    #[serde(skip)]
     pick_using_cursor: Option<Pick>,
     // extra parameters
     a: C32,
@@ -115,7 +116,7 @@ impl FractalTrait for Newtons {
         // todo
     }
 
-    fn get_shader_code(&self) -> Shader { Shader::Newtons }
+    fn get_shader(&self) -> Shader { Shader::Newtons }
 
     fn fill_uniform_buffer(&self, buffer: UniformBuffer<&mut [u8]>) {
         let mut polynomial_coef: [C32; 6] = [nalgebra::zero();6];

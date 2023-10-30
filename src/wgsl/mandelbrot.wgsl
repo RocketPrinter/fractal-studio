@@ -7,8 +7,14 @@ struct Props {
     scale: vec2<f32>,
     offset: vec2<f32>,
 
+    c: vec2<f32>,
     max_iterations: u32,
-    e: f32, // if the exponent is != 2 then the fractal becomes a multibrot
+    escape_radius: f32,
+    exp: f32, // only used if MULTI == true
+    // 0 - render Mandelbort/base fractal
+    // 1 - render a bix of both
+    // 2 - render Julia fractal
+    julia: i32,
     _padding: vec2<f32>,
 }
 
@@ -29,52 +35,64 @@ fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.position = vec4(v_positions[v_idx], 0.0, 1.0);
     out.uv = (v_positions[v_idx] + props.offset) * props.scale;
+    #if VARIANT == 2
+    // the burning ship is traditionally flipped on the y axis
+    if props.julia == 0 {
+        out.uv *= vec2(1.,-1.);
+    }
+    #endif
     return out;
 }
 
 @fragment
 fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
-    var iterations = compute_iterations(in.uv);
-    return vec4(vec3(f32(iterations - 1u) / f32(props.max_iterations - 1u)), 1.0);
-}
+    // we could turn it into a variant but it's only run once per fragment so doubling the sources isn't worth it
+    if props.julia == 0 {
+        let iterations = compute_iterations(vec2<f32>(), in.uv, 2., props.max_iterations);
+        return vec4(vec3(f32(iterations) / f32(props.max_iterations)), 1.0);
 
-fn compute_iterations(c: vec2<f32>) -> u32 {
-    if (props.e == 2.) {
-        return compute_iterations_simple(c);
+    } else if props.julia == 1 {
+        let iterations_mandelbrot = compute_iterations(vec2<f32>(), in.uv, 2., props.max_iterations/2u);
+        let iterations_julia = compute_iterations(in.uv, props.c, props.escape_radius, props.max_iterations/2u);
+        return vec4(vec3(f32(iterations_mandelbrot + iterations_julia) / f32(props.max_iterations)), 1.0);
+
     } else {
-        return compute_iterations_generalized(c);
+        let iterations = compute_iterations(in.uv, props.c, props.escape_radius, props.max_iterations);
+        return vec4(vec3(f32(iterations) / f32(props.max_iterations)), 1.0);
     }
 }
 
-// exponent is two, classic mandelbrot case
 // https://en.wikipedia.org/wiki/Plotting_algorithms_for_the_Mandelbrot_set
-fn compute_iterations_simple(c: vec2<f32>) -> u32 {
+fn compute_iterations(z0: vec2<f32>, c: vec2<f32>, escape_radius: f32, max_iterations: u32) -> u32 {
     var iterations = 0u;
-    var z = vec2<f32>();
-    var z2 = vec2<f32>(); // contains z.x^2 and z.y^2 not the square of the complex number
-    var w = 0.;
-    while z2.x + z2.y <= 4. && iterations < props.max_iterations {
-        z.x = z2.x - z2.y + c.x;
-        z.y = w - z2.x - z2.y + c.y;
-        z2 = z * z;
-        w = (z.x + z.y) * (z.x + z.y);
-        iterations += 1u;
+    var z = z0;
+    let r_sq = escape_radius * escape_radius;
+    while z.x * z.x + z.y * z.y <= r_sq && iterations < max_iterations {
+        z = equation(z,c);
+        iterations++;
     }
     return iterations;
 }
 
-// for cases where the exponent is != 2
-// todo for cases where the exponent is negative it doesn't work, possibly because the function isn't polynomial anymore or because the escape radius is nonsensical
-// see https://math.stackexchange.com/questions/1257555/how-to-compute-a-negative-multibrot-set
-fn compute_iterations_generalized(c: vec2<f32>) -> u32 {
-    var iterations = 0u;
-    var z = vec2<f32>();
-    var w = 0.;
-    while z.x * z.x + z.y * z.y <= 4. && iterations < props.max_iterations {
-        z = cpowf(z, props.e) + c;
-        iterations += 1u;
-    }
-    return iterations;
+fn equation(z: vec2<f32>, c: vec2<f32>) -> vec2<f32> {
+    #if VARIANT == 0
+        // mandelbrot
+        return raise_power(z) + c;
+    #else if VARIANT == 1
+        // modified mandelbrot set
+        return raise_power(z) - z + c;
+    #else if VARIANT == 2
+        // burning ship
+        return raise_power(abs(z)) + c;
+    #endif
+}
+
+fn raise_power(z: vec2<f32>) -> vec2<f32> {
+    #if MULTI == false
+        return vec2(z.x * z.x - z.y * z.y, 2. * z.x * z.y);
+    #else
+        return cpowf(z, props.exp);
+    #endif
 }
 
 // complex number to the power of a real number
