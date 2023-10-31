@@ -55,13 +55,12 @@ impl Visualizer {
                 let mut cursor_clip_space = 2. * (hover_pos-painter.clip_rect().min) / painter.clip_rect().size() - vec2(1., 1.);
                 cursor_clip_space.y *= -1.;
 
-                let zoom = 
-                    input
-                        .multi_touch()
-                        .map(|mt| 1. / mt.zoom_delta)
-                        .unwrap_or_else(|| {
-                            1. + input.scroll_delta.y * ZOOM_FACTOR
-                        });
+                let zoom = input
+                    .multi_touch()
+                    .map(|mt| 1. / mt.zoom_delta)
+                    .unwrap_or_else(|| {
+                        1. + input.scroll_delta.y * ZOOM_FACTOR
+                    });
                 
                 let mut new_scale = self.scale * zoom;
                 new_scale = new_scale.clamp(0.0000000001, 10000.); // prevent zoom from becoming 0 or inf
