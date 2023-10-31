@@ -30,8 +30,6 @@ pub struct RenderData {
 pub const UNIFORM_BUFFER_SIZE: u64 = 144;
 
 const ZOOM_FACTOR: f32 = -0.001;
-const PINCH_FACTOR: f32 = -0.3;
-const DRAG_FACTOR: f32 = 0.003;
 
 impl Visualizer {
     pub fn new(texture_format: TextureFormat) -> Self {
@@ -50,14 +48,22 @@ impl Visualizer {
         // changing zoom and offset
         // todo: refactor
         let mut cursor_shader_space: Option<Vec2> = None;
-        self.offset += response.drag_delta() * vec2(-1.,1.) * DRAG_FACTOR;
+        self.offset += response.drag_delta() / painter.clip_rect().size() * vec2(-1.,1.) * 2.0;
         if let Some(hover_pos) = response.hover_pos() {
             ui.input(|input| {
                 // from -1 to 1
                 let mut cursor_clip_space = 2. * (hover_pos-painter.clip_rect().min) / painter.clip_rect().size() - vec2(1., 1.);
                 cursor_clip_space.y *= -1.;
 
-                let mut new_scale = self.scale * (1. + input.scroll_delta.y * ZOOM_FACTOR);
+                let zoom = 
+                    input
+                        .multi_touch()
+                        .map(|mt| 1. / mt.zoom_delta)
+                        .unwrap_or_else(|| {
+                            1. + input.scroll_delta.y * ZOOM_FACTOR
+                        });
+                
+                let mut new_scale = self.scale * zoom;
                 new_scale = new_scale.clamp(0.0000000001, 10000.); // prevent zoom from becoming 0 or inf
                 let delta_scale = self.scale / new_scale;
                 // rescale to make zooming centered on the screen
