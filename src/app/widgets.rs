@@ -1,5 +1,8 @@
+use std::fmt::Display;
 use std::ops::RangeInclusive;
-use eframe::egui::{Button, Color32, DragValue, Response, RichText, Ui, Visuals, Widget, WidgetText};
+use eframe::egui::{Button, Color32, DragValue, Id, Response, RichText, Ui, Visuals, Widget, WidgetText};
+use eframe::egui::util::IdTypeMap;
+use egui_notify::{Toast, ToastLevel};
 use crate::math::C32;
 
 pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) {
@@ -40,6 +43,13 @@ pub fn option_checkbox<T>(ui: &mut Ui, value: &mut Option<T>, label: impl Into<W
     }
 }
 
+pub fn error_toast(err: impl Display) -> Toast {
+    let mut toast = Toast::basic(format!("Error: {err}"));
+    toast.set_duration(None).set_level(ToastLevel::Error);
+    toast
+}
+
+#[deprecated]
 pub fn dismissible_error(ui: &mut Ui, err: &mut Option<anyhow::Error>) {
     if let Some(e) = &err {
         let text = RichText::new(format!("Error: {e}")).color(ui.style().visuals.error_fg_color);

@@ -6,6 +6,7 @@ pub mod library;
 use std::sync::Arc;
 use eframe::egui::{CentralPanel, Frame, Id};
 use eframe::{App, CreationContext, egui};
+use egui_notify::{Anchor, Toasts};
 use crate::app::settings::Settings;
 use crate::app::visualizer::Visualizer;
 
@@ -13,6 +14,7 @@ use crate::app::visualizer::Visualizer;
 pub struct EguiApp {
     settings: Settings,
     visualizer: Visualizer,
+    toasts: Toasts,
 
     set_info: bool,
 }
@@ -24,6 +26,7 @@ impl EguiApp {
         EguiApp {
             settings,
             visualizer: Visualizer::new(cc.wgpu_render_state.as_ref().unwrap().target_format ),
+            toasts: Toasts::default().with_anchor(Anchor::TopLeft),
 
             set_info: false,
         }
@@ -34,6 +37,8 @@ impl EguiApp {
 impl App for EguiApp {
 
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.toasts.show(ctx);
+
         // used for later accessing the url
         if !self.set_info {
             self.set_info = true;
@@ -54,7 +59,7 @@ impl App for EguiApp {
             }
         }
 
-        self.settings.ctx(ctx);
+        self.settings.show(ctx, &mut self.toasts);
 
         CentralPanel::default()
             // remove margin and background

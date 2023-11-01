@@ -57,7 +57,7 @@ impl Fractal {
     pub fn to_link(&self, _ctx: &Context) -> Result<String> {
         // if on native, hardcode the url
         #[cfg(not(target_arch = "wasm32"))]
-        let mut url = "https://rocketprinter.github.io/fractal_visualizer?fractal=".to_string();
+        let mut url = "https://rocketprinter.github.io/fractal-studio?fractal=".to_string();
 
         //uses "integration_info" data to get the integration info, which should be set in app.rs
         #[cfg(target_arch = "wasm32")]
