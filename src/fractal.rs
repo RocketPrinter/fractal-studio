@@ -5,7 +5,7 @@ pub mod lyapunov;
 
 use eframe::egui::{Context, Painter, Ui, Vec2};
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use base64::prelude::*;
 use encase::UniformBuffer;
 use enum_dispatch::enum_dispatch;
@@ -83,12 +83,16 @@ impl Fractal {
 
 
     pub fn from_link(link: &str) -> Result<Fractal> {
+        if link.is_empty() {
+            bail!("Empty string");
+        }
+
         match Url::parse(link) {
             Ok(url) => {
                 // if the url parsing was successful we extract the query param
                 let code = url.query_pairs()
                     .find(|(key, _)| key == "fractal")
-                    .ok_or_else(|| anyhow!("Cannot find the fractal in the query string"))?
+                    .ok_or_else(|| anyhow!("Cannot find the fractal code in the query string"))?
                     .1;
                 Self::from_code(&code)
             },

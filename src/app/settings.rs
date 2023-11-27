@@ -5,27 +5,24 @@ use crate::fractal::mandelbrot::MandelbrotFamily;
 use crate::fractal::newtons::Newtons;
 use crate::fractal::test_grid::TestGrid;
 use crate::fractal::{Fractal, FractalDiscriminants, FractalTrait};
-use eframe::egui;
-use eframe::egui::{
-    vec2, Align2, Area, Button, CollapsingHeader, ComboBox, Id, RichText, SidePanel, TextEdit,
-    Ui, Widget, Window,
-};
+use eframe::egui::{self, vec2, Align2, Area, Button, CollapsingHeader, ComboBox, Id, RichText, SidePanel, TextEdit, Ui, Widget, Window, Vec2, Layout, Align};
 use egui_extras::{Size, StripBuilder};
 use std::default::Default;
-use eframe::egui::menu::menu_button;
-use egui_notify::{Toast, Toasts};
+use egui_notify::{Toasts};
 use strum::EnumMessage;
+use crate::app::library;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct Settings {
     pub fractal: Fractal,
-    pub debug_label: bool,
     pub library: Library,
+    pub debug_label: bool,
     pub library_window_open: bool,
+    pub welcome_window_open: bool,
     #[serde(skip)]
     pub hide: bool,
     #[serde(skip)]
-    pub import_text: String,
+    import: (bool, String),
 }
 
 impl Default for Settings {
@@ -33,10 +30,11 @@ impl Default for Settings {
         Self {
             fractal: Default::default(),
             library: Default::default(),
+            welcome_window_open: true,
             library_window_open: false,
             debug_label: true,
             hide: false,
-            import_text: "".into(),
+            import: (false, String::new()),
         }
     }
 }
@@ -79,6 +77,17 @@ impl Settings {
                     })
                 });
         });
+
+        Window::new("Library")
+            .vscroll(true)
+            .open(&mut self.library_window_open)
+            .collapsible(false)
+            .constrain(false)
+            .show(ctx, |ui| {
+                self.library.ui(ui, &mut self.fractal, toasts);
+            });
+
+        self.welcome_window(ctx);
     }
 
     fn main_ui(&mut self, ui: &mut Ui) {
@@ -146,63 +155,64 @@ impl Settings {
         });
 
         self.fractal.settings_ui(ui);
-
-        // todo: refactor library
-        Window::new("Library")
-            .vscroll(true)
-            .open(&mut self.library_window_open)
-            .collapsible(false)
-            .auto_sized()
-            .show(ui.ctx(), |ui| {
-                self.library.ui(ui, &mut self.fractal);
-            });
     }
 
     fn hamburger_menu_ui(&mut self, ui: &mut Ui, toasts: &mut Toasts) {
 
-        //todo: make work and also not look like crap
-        menu_button(ui,"Import link", |ui| {
-            TextEdit::multiline(&mut self.import_text)
+        if ui.button("Import link").clicked() {
+            self.import.0 = !self.import.0;
+        }
+
+        if self.import.0 {
+            ui.separator();
+
+            TextEdit::multiline(&mut self.import.1)
                 .hint_text("Link or code")
                 .desired_width(150.)
                 .ui(ui);
 
-            if ui
-                .add_enabled(!self.import_text.is_empty(), Button::new("Import"))
-                .clicked()
-            {
-                match Fractal::from_link(&self.import_text) {
+            if ui.button("Import").clicked() {
+                match Fractal::from_link(&self.import.1) {
                     Ok(fractal) => {
                         self.fractal = fractal;
-                        self.import_text.clear();
-                        toasts.add(Toast::success("Loaded fractal"));
+                        self.import.1.clear();
+                        toasts.success("Loaded fractal");
                     }
                     Err(e) => { toasts.add(error_toast(e));},
                 }
             }
-        });
+
+            // we shortcircuit and don't draw the rest of the menu
+            return;
+        }
 
         if ui.button("Copy link to clipboard").clicked() {
             match self.fractal.to_link(ui.ctx()) {
                 Ok(url) => {
                     ui.output_mut(move |output| output.copied_text = url);
-                    toasts.add(Toast::success("Copied link to clipboard"));
+                    toasts.success("Copied link to clipboard");
                 }
                 Err(e) => { toasts.add(error_toast(e));},
             }
         }
 
-        // todo: temp
-        if ui
-            .add_enabled(!self.library_window_open, Button::new("Open library"))
-            .clicked()
-        {
+        if ui.add_enabled(!self.welcome_window_open, Button::new("Show Welcome"))
+            .clicked() {
+            self.welcome_window_open = true;
+        }
+
+        if ui.add_enabled(!self.library_window_open, Button::new("Show Library"))
+            .clicked() {
             self.library_window_open = true;
         }
 
         CollapsingHeader::new(RichText::new("Debug").color(ui.style().visuals.weak_text_color()))
             .show(ui, |ui| {
                 ui.checkbox(&mut self.debug_label, "Debug label");
+                let mut debug_on_hover = ui.ctx().debug_on_hover();
+                if ui.checkbox(&mut debug_on_hover, "Debug on hover" ).changed() {
+                    ui.ctx().set_debug_on_hover(debug_on_hover);
+                }
                 if ui.button("Test grid").clicked() {
                     self.fractal = Fractal::TestGrid(TestGrid::default());
                 }
@@ -232,5 +242,33 @@ impl Settings {
             .rect
             .height()
             + 5.
+    }
+
+    fn welcome_window(&mut self, ctx: &egui::Context) {
+        let mut close_window = false;
+        Window::new("Welcome!")
+            .open(&mut self.welcome_window_open)
+            .collapsible(false)
+            .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
+            .resizable(false)
+            .default_width(300.)
+            .show(ctx, |ui| {
+                ui.add_space(7.);
+                ui.label("Explore multiple fractals by dragging and zooming.");
+                ui.add_space(7.);
+                ui.label("Tweak the settings of each fractal and discover new pretty things! (and use the link to share them)");
+                ui.add_space(7.);
+
+                ui.with_layout(Layout::right_to_left(Align::TOP),|ui|{
+                    if ui.button("Check some examples >").clicked() {
+                        self.library_window_open = true;
+                        // we usually want the user tab to be open by default but this time we want the examples to be open
+                        self.library.tab = library::Tab::Examples;
+                        close_window = true;
+                    }
+                });
+            });
+
+        if close_window {self.welcome_window_open = false}
     }
 }
