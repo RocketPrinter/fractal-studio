@@ -1,7 +1,6 @@
-use eframe::egui::{Align, Button, CollapsingHeader, Direction, Frame, Grid, Layout, menu, Rect, Separator, TextEdit, TopBottomPanel, Ui, Vec2, Widget};
-use egui_extras::{Column, Size, StripBuilder, Table, TableBuilder};
+use eframe::egui::{Button, Grid, Separator, TextEdit, Ui, Widget};
 use egui_notify::Toasts;
-use crate::app::widgets::{centerer, error_toast};
+use crate::app::widgets::{ error_toast};
 use crate::fractal::Fractal;
 use crate::evenly_spaced_out;
 

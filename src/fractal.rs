@@ -39,7 +39,7 @@ pub trait FractalTrait {
     fn get_shader(&self) -> Shader;
     fn fill_uniform_buffer(&self, _buffer: UniformBuffer<&mut [u8]>) {}
     /// mouse_pos will be Some if the mouse is hovering over the visualizer
-    fn draw_extra(&mut self, _painter: &Painter, _mouse_pos: Option<Vec2>, /* todo: 2x2 matrix that converts mouse pos to shader space? */) {}
+    fn draw_extra(&mut self, _painter: &Painter, _mouse_pos: Option<Vec2>, /* evenelytodo: 2x2 matrix that converts mouse pos to shader space? */) {}
 }
 
 impl Default for Fractal {
