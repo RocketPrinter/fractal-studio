@@ -67,8 +67,8 @@ impl FractalTrait for Newtons {
         ui.horizontal(|ui|{
             ui.label("Roots");
             if ui.add_enabled(self.roots.len() < 5, Button::new("+").small().min_size(vec2(15.,0.))).clicked() {
-                let mut rand = rand::thread_rng();
-                self.roots.push(C32::new(rand.gen::<f32>() * 2. - 1., rand.gen::<f32>() * 2. - 1.)) ;
+                let mut rand = rand::rng();
+                self.roots.push(C32::new(rand.random::<f32>() * 2. - 1., rand.random::<f32>() * 2. - 1.)) ;
             }
             if ui.add_enabled(self.roots.len() > 2, Button::new("-").small().min_size(vec2(15.,0.))).clicked() {
                 self.roots.pop();

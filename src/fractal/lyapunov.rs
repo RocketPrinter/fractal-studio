@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use eframe::egui::{ComboBox, DragValue, TextEdit, Ui, Widget};
 use encase::{ShaderType, UniformBuffer};
-use rand::{Rng, thread_rng};
+use rand::{Rng, rng};
 use crate::fractal::FractalTrait;
 use crate::wgsl::{LyapunovShader, Shader};
 
@@ -62,10 +62,10 @@ impl FractalTrait for Lyapunov {
                 .desired_width(135.).char_limit(16).ui(ui);
             self.sequence.retain(|c| c == 'A' || c == 'B' || c == 'a' || c == 'b');
             if ui.button("🔁").clicked() {
-                let mut rng = thread_rng();
-                let mut bits: u16 = rng.gen();
+                let mut rng = rng();
+                let mut bits: u16 = rng.random();
                 self.sequence =
-                    (0..rng.gen_range(2..=16)).map(|_| {
+                    (0..rng.random_range(2..=16)).map(|_| {
                         let b = bits & 1; bits >>= 1;
                         match b {
                         0 => 'A',

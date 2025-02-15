@@ -1,8 +1,8 @@
 use std::fs::read_to_string;
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use naga_oil::compose::preprocess::Preprocessor;
 use naga_oil::compose::ShaderDefValue;
-use proc_macro2::{TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::spanned::Spanned;
 use syn::{Lit, LitBool, LitInt};
@@ -82,7 +82,7 @@ pub(super) fn variants_decl_to_tokens(decl: VariantsDeclaration, value_enum_decl
 
                 variant_decls.extend( quote! {#variant_name,});
 
-                let source = preproc.preprocess(&file, &defs, false).unwrap().preprocessed_source;
+                let source = preproc.preprocess(&file, &defs).unwrap().preprocessed_source;
                 // todo: labels
                 match_arms.extend(quote! {Self::#variant_name => ShaderModuleDescriptor {label:None, source: wgpu::ShaderSource::Wgsl(#source.into())},});
             }
@@ -109,7 +109,7 @@ pub(super) fn variants_decl_to_tokens(decl: VariantsDeclaration, value_enum_decl
                 let value_enum_keys = value_enums.iter().map(|ve|ve.name.to_string()).collect::<Vec<_>>();
                 'outer: loop {
 
-                    let source = preproc.preprocess(file.as_str(), &defs, false).unwrap().preprocessed_source;
+                    let source = preproc.preprocess(file.as_str(), &defs).unwrap().preprocessed_source;
 
                     let values = value_enum_indexes.iter().zip(value_enums.iter()).map(|(i, value_enum)| {
                         let enum_type = value_enum.get_codegen_name();
