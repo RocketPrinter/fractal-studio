@@ -62,8 +62,8 @@ fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
 
 // https://en.wikipedia.org/wiki/Newton_fractal#Implementation
 // will return -1 if it's not close enough to any of the roots and the root index otherwise
-fn newtons_method(z: vec2<f32>) -> i32 {
-    var z = z;
+fn newtons_method(z_no_shadowing_whyyy: vec2<f32>) -> i32 {
+    var z = z_no_shadowing_whyyy;
     for(var iteration = 0u; iteration < props.max_iterations; iteration++) {
         var zp = vec2(1.,0.);
         var prev = vec2<f32>();

@@ -4,7 +4,7 @@ use eframe::egui::{Button, Color32, DragValue, Response, Ui, Visuals, Widget, Wi
 use egui_notify::{Toast, ToastLevel};
 use crate::math::C32;
 
-pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) {
+pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, range: Option<RangeInclusive<f32>>) {
     ui.horizontal(|ui| {
         let mut x = DragValue::new(&mut v.re);
         let mut y = DragValue::new(&mut v.im);
@@ -13,9 +13,9 @@ pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, clamp_range: Option<
             x = x.speed(speed);
             y = y.speed(speed);
         }
-        if let Some(clamp_range) = clamp_range {
-            x = x.clamp_range(clamp_range.clone());
-            y = y.clamp_range(clamp_range);
+        if let Some(range) = range {
+            x = x.range(range.clone());
+            y = y.range(range);
         }
         x.ui(ui);
         ui.add_space(-6.);
@@ -24,9 +24,9 @@ pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, clamp_range: Option<
 }
 
 /// also has a label and a button for enabling picking
-pub fn c32_ui_full(ui: &mut Ui, label: impl Into<WidgetText>, v: &mut C32, speed: Option<f32>, clamp_range: Option<RangeInclusive<f32>>) -> Response {
+pub fn c32_ui_full(ui: &mut Ui, label: impl Into<WidgetText>, v: &mut C32, speed: Option<f32>, range: Option<RangeInclusive<f32>>) -> Response {
     ui.label(label);
-    c32_ui(ui, v, speed, clamp_range);
+    c32_ui(ui, v, speed, range);
     Button::new("🖱").small().ui(ui)
 }
 
@@ -44,7 +44,7 @@ pub fn option_checkbox<T>(ui: &mut Ui, value: &mut Option<T>, label: impl Into<W
 
 pub fn error_toast(err: impl Display) -> Toast {
     let mut toast = Toast::basic(format!("Error: {err}"));
-    toast.set_duration(None).set_level(ToastLevel::Error);
+    toast.duration(None).level(ToastLevel::Error);
     toast
 }
 

@@ -38,14 +38,14 @@ impl FractalTrait for Lyapunov {
     fn settings_ui(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui|{
             ui.label("Iterations");
-            DragValue::new(&mut self.iterations).speed(1).clamp_range(0..=3000).ui(ui);
+            DragValue::new(&mut self.iterations).speed(1).range(0..=3000).ui(ui);
         });
 
         ui.horizontal(|ui|{
             ui.label("Function");
             use LyapunovShader as LC;
             let variants = [LC::LogisticMap, LC::SinMap, LC::GaussMap, LC::Exponential, LC::CircleMap1, LC::CircleMap2];
-            ComboBox::from_id_source("variant selector")
+            ComboBox::from_id_salt("variant selector")
                 .selected_text(self.variant.to_string())
                 .show_ui( ui, |ui| {
                     for variant in variants {

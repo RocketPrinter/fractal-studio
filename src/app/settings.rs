@@ -1,5 +1,5 @@
 use crate::app::library::Library;
-use crate::app::widgets::{error_toast};
+use crate::app::widgets::error_toast;
 use crate::fractal::lyapunov::Lyapunov;
 use crate::fractal::mandelbrot::MandelbrotFamily;
 use crate::fractal::newtons::Newtons;
@@ -8,7 +8,7 @@ use crate::fractal::{Fractal, FractalDiscriminants, FractalTrait};
 use eframe::egui::{self, vec2, Align2, Area, Button, CollapsingHeader, ComboBox, Id, RichText, SidePanel, TextEdit, Ui, Widget, Window, Vec2, Layout, Align};
 use egui_extras::{Size, StripBuilder};
 use std::default::Default;
-use egui_notify::{Toasts};
+use egui_notify::Toasts;
 use strum::EnumMessage;
 use crate::app::library;
 
@@ -98,7 +98,7 @@ impl Settings {
             .unwrap_or_else(|| fractal_d.get_documentation().unwrap_or_default());
         ui.horizontal(|ui| {
             ui.label("Fractal");
-            ComboBox::from_id_source("Fractal selector")
+            ComboBox::from_id_salt("Fractal selector")
                 .selected_text(fractal_label)
                 .show_ui(ui, |ui| {
                     use FractalDiscriminants as FD;
@@ -189,7 +189,7 @@ impl Settings {
         if ui.button("Copy link to clipboard").clicked() {
             match self.fractal.to_link(ui.ctx()) {
                 Ok(url) => {
-                    ui.output_mut(move |output| output.copied_text = url);
+                    ui.ctx().copy_text(url);
                     toasts.success("Copied link to clipboard");
                 }
                 Err(e) => { toasts.add(error_toast(e));},

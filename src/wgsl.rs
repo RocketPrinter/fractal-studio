@@ -1,4 +1,4 @@
-use std::hash::{Hash};
+use std::hash::Hash;
 use eframe::wgpu::{ShaderModuleDescriptor, include_wgsl};
 use fractal_studio_macros::wgsl_variants;
 use crate::wgsl::mandelbrot::MandelbrotShader;

@@ -3,7 +3,7 @@ pub mod mandelbrot;
 pub mod newtons;
 pub mod lyapunov;
 
-use eframe::egui::{Context, Painter, Ui, Vec2};
+use eframe::egui::{Context, Id, Painter, Ui, Vec2};
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
 use anyhow::{anyhow, bail, Result};
 use base64::prelude::*;
@@ -54,22 +54,13 @@ impl Fractal {
         Ok(BASE64_URL_SAFE_NO_PAD.encode(serialized_code))
     }
 
-    pub fn to_link(&self, _ctx: &Context) -> Result<String> {
-        // if on native, hardcode the url
-        #[cfg(not(target_arch = "wasm32"))]
-        let mut url = "https://rocketprinter.github.io/fractal-studio?fractal=".to_string();
-
-        //uses "integration_info" data to get the integration info, which should be set in app.rs
-        #[cfg(target_arch = "wasm32")]
-        let mut url = {
-            use eframe::egui::Id;
-            use std::sync::Arc;
-            let Some(integration_info) = _ctx.data(|data|data.get_temp::<Arc<eframe::IntegrationInfo>>(Id::new("integration_info")))
-                else {anyhow::bail!("Cannot get the integration info")};
-            let mut url = integration_info.web_info.location.url.clone();
-            url.push_str("?fractal=");
-            url
+    pub fn to_link(&self, ctx: &Context) -> Result<String> {
+        // root_url should be set when creating the app
+        let Some(mut url) = ctx.data(|data|data.get_temp::<String>(Id::new("root_url"))) else {
+            bail!("root_url has not been set!");
         };
+
+        url.push_str("?fractal=");
 
         let serialized_code = rmp_serde::to_vec_named(self)?;
         BASE64_URL_SAFE_NO_PAD.encode_string(serialized_code, &mut url);

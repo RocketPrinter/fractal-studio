@@ -1,6 +1,6 @@
 use eframe::egui::{Button, Grid, Separator, TextEdit, Ui, Widget};
 use egui_notify::Toasts;
-use crate::app::widgets::{ error_toast};
+use crate::app::widgets::error_toast;
 use crate::fractal::Fractal;
 use crate::evenly_spaced_out;
 

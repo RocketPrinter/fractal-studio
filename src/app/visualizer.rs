@@ -1,45 +1,28 @@
-use std::collections::{HashMap};
-use std::sync::{Arc};
 use bytemuck::bytes_of;
-use eframe::egui::{Align, Align2, Button, Layout, PaintCallback, Sense, Ui, Vec2, vec2, Widget};
-use eframe::egui_wgpu::CallbackFn;
-use eframe::wgpu::{ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexState};
+use eframe::egui::{vec2, Align, Align2, Button, Layout, Sense, Ui, UiBuilder, Vec2, Widget};
+use eframe::egui_wgpu::Callback;
 use encase::UniformBuffer;
-use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferDescriptor, BufferUsages, PipelineLayout};
-use crate::app::settings::{Settings};
+use crate::app::settings::Settings;
 use crate::app::widgets::get_transparent_button_fill;
-use crate::fractal::{ FractalTrait};
-use crate::wgsl::Shader;
+use crate::fractal::FractalTrait;
 
+use super::rendering::{RendererCallback, MAIN_UNIFORM_BUFFER_SIZE};
 // todo: reset zoom and offset when changing fractal
 #[derive(Debug, Clone)]
 pub struct Visualizer {
     scale: f32,
     offset: Vec2,
-
-    texture_format: TextureFormat,
 }
-
-pub struct RenderData {
-    uniform_buffer: Buffer,
-    bind_group: BindGroup,
-    pipeline_layout: PipelineLayout,
-    pipelines: HashMap<Shader,RenderPipeline>,
-}
-
-pub const UNIFORM_BUFFER_SIZE: u64 = 144;
 
 const ZOOM_FACTOR: f32 = -0.001;
 
-impl Visualizer {
-    pub fn new(texture_format: TextureFormat) -> Self {
-        Self {
-            scale: 1.,
-            offset: Vec2::ZERO,
-            texture_format,
-        }
+impl Default for Visualizer {
+    fn default() -> Self {
+        Self { scale: 1., offset: Vec2::ZERO, }
     }
+}
 
+impl Visualizer {
     pub fn ui(&mut self, settings: &mut Settings, ui: &mut Ui) {
         let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
 
@@ -59,9 +42,9 @@ impl Visualizer {
                     .multi_touch()
                     .map(|mt| 1. / mt.zoom_delta)
                     .unwrap_or_else(|| {
-                        1. + input.scroll_delta.y * ZOOM_FACTOR
+                        1. + input.smooth_scroll_delta.y * ZOOM_FACTOR
                     });
-                
+
                 let mut new_scale = self.scale * zoom;
                 new_scale = new_scale.clamp(0.0000000001, 10000.); // prevent zoom from becoming 0 or inf
                 let delta_scale = self.scale / new_scale;
@@ -77,36 +60,19 @@ impl Visualizer {
         }
 
         // preparing data for writing to the uniform buffer
-        let mut buffer = [0u8;UNIFORM_BUFFER_SIZE as usize];
+        let mut buffer = [0u8; MAIN_UNIFORM_BUFFER_SIZE];
         buffer[0.. 8].copy_from_slice(bytes_of(&(self.scale * aspect_ratio_correction)));
         buffer[8..16].copy_from_slice(bytes_of(&self.offset));
         let settings_buffer = UniformBuffer::new(&mut buffer[16..]);
         settings.fractal.fill_uniform_buffer(settings_buffer);
 
         // rendering
-        let shader_code = settings.fractal.get_shader();
-        let texture_format = self.texture_format;
-        painter.add(PaintCallback {
-            rect: painter.clip_rect(),
-            callback: Arc::new(CallbackFn::default()
-                // as the expose-ids feature on wgpu is not activated, we'll just have to assume that the device remains constant
-                .prepare(move |device, queue, _encoder, type_map| {
-                    let data = type_map.entry::<RenderData>().or_insert_with(|| RenderData::new(device));
-                    data.ensure_pipeline_created(device, texture_format, shader_code);
-                    queue.write_buffer(&data.uniform_buffer, 0, &buffer);
-                    vec![]
-                })
-                .paint(move |_info, pass, type_map| {
-                    let Some(render_data) = type_map.get::<RenderData>() else {return};
+        let callback = RendererCallback {
+            shader_code: settings.fractal.get_shader(),
+            main_data: buffer,
+        };
 
-                    pass.set_pipeline(render_data.pipelines.get(&shader_code).unwrap());
-                    pass.set_bind_group(0, &render_data.bind_group, &[]);
-
-                    // vertex coordinates are hardcoded in the shader so a vertex buffer is not needed
-                    pass.draw(0..6, 0..1);
-                })
-            ),
-        });
+        painter.add(Callback::new_paint_callback(painter.clip_rect(), callback));
 
         // fractals can draw extra stuff
         settings.fractal.draw_extra(&painter, cursor_shader_space);
@@ -119,7 +85,7 @@ impl Visualizer {
         }
 
         // position reset button, we have to do some funky stuff to get it to the right place
-        ui.allocate_ui_at_rect(ui.max_rect().shrink(5.), |ui| {
+        ui.allocate_new_ui(UiBuilder::new().max_rect(ui.max_rect().shrink(5.)), |ui| {
             ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
                 if !settings.hide && Button::new("🏠").fill(get_transparent_button_fill(ui.visuals(), 0.7)).ui(ui).clicked() {
                     self.scale = 1.;
@@ -127,84 +93,5 @@ impl Visualizer {
                 }
             });
         });
-    }
-}
-
-impl RenderData {
-    pub fn new(device: &Device) -> Self {
-
-        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Visualizer bind group layout"),
-            entries: &[BindGroupLayoutEntry{
-                binding: 0,
-                visibility: ShaderStages::VERTEX_FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
-
-        let uniform_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Visualizer uniform buffer"),
-            size: UNIFORM_BUFFER_SIZE,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Visualizer bind group"),
-            layout: &bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: BindingResource::Buffer(uniform_buffer.as_entire_buffer_binding()),
-            }],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("Visualizer layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
-
-        Self {
-            uniform_buffer,
-            bind_group,
-            pipeline_layout,
-            pipelines: HashMap::new(),
-        }
-    }
-
-    fn ensure_pipeline_created(&mut self, device: &Device, texture_format: TextureFormat, shader_code: Shader) {
-        let descriptor = shader_code.get_shader();
-        let label=  format!("Pipeline visualizer {:?}", descriptor.label);
-        let shader_module = device.create_shader_module(descriptor);
-
-        self.pipelines.entry(shader_code).or_insert_with(||
-            device.create_render_pipeline(&RenderPipelineDescriptor {
-                label: Some(&label),
-                layout: Some(&self.pipeline_layout),
-                vertex: VertexState {
-                    module: &shader_module,
-                    entry_point: "vertex",
-                    buffers: &[],
-                },
-                fragment: Some(FragmentState {
-                    module: &shader_module,
-                    entry_point: "fragment",
-                    targets: &[Some(ColorTargetState {
-                        format: texture_format,
-                        blend: None,
-                        write_mask: ColorWrites::ALL,
-                    })],
-                }),
-                primitive: PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: MultisampleState::default(),
-                multiview: None,
-            })
-        );
     }
 }

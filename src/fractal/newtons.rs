@@ -56,7 +56,7 @@ impl FractalTrait for Newtons {
     fn settings_ui(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui|{
             ui.label("Iterations");
-            DragValue::new(&mut self.iterations).speed(1).clamp_range(0..=3000).ui(ui);
+            DragValue::new(&mut self.iterations).speed(1).range(0..=3000).ui(ui);
         });
 
         if self.pick_using_cursor.is_some() {
@@ -107,7 +107,7 @@ impl FractalTrait for Newtons {
                     self.threshold = f32::INFINITY;
                 }
                 ui.label("Threshold");
-                ui.add_enabled(enabled, DragValue::new(&mut self.threshold).speed(0.1).clamp_range(0.0001..=f32::INFINITY));
+                ui.add_enabled(enabled, DragValue::new(&mut self.threshold).speed(0.1).range(0.0001..=f32::INFINITY));
             });
         });
     }

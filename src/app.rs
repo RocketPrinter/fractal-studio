@@ -1,12 +1,13 @@
-pub mod settings;
-pub mod visualizer;
 pub mod widgets;
-pub mod library;
+mod settings;
+mod visualizer;
+mod library;
+mod rendering;
 
-use std::sync::Arc;
 use eframe::egui::{CentralPanel, Frame, Id};
-use eframe::{App, CreationContext, egui};
+use eframe::{egui, App, CreationContext};
 use egui_notify::{Anchor, Toasts};
+use rendering::RenderData;
 use crate::app::settings::Settings;
 use crate::app::visualizer::Visualizer;
 
@@ -15,49 +16,50 @@ pub struct EguiApp {
     settings: Settings,
     visualizer: Visualizer,
     toasts: Toasts,
-
-    set_info: bool,
 }
 
 impl EguiApp {
-    pub fn new(cc: &CreationContext<'_>) -> Self {
-        let settings: Settings = cc.storage.and_then(|storage| eframe::get_value(storage, eframe::APP_KEY)).unwrap_or_default();
+    pub fn new(cc: &CreationContext<'_>) -> EguiApp {
+        #[allow(unused_mut)] // it's only mutated in wasm32
+        let mut settings: Settings = cc.storage.and_then(|storage| eframe::get_value(storage, eframe::APP_KEY)).unwrap_or_default();
+
+        let wgpu = cc.wgpu_render_state.as_ref().unwrap();
+        let rd = RenderData::new(&wgpu.device, wgpu.target_format);
+        wgpu.renderer.write().callback_resources.insert(rd);
+
+        // used to create sharable links, on non wasm platforms it's hardcoded
+        #[cfg(target_arch = "wasm32")]
+        let root_url = cc.integration_info.web_info.location.url.clone();
+        #[cfg(not(target_arch = "wasm32"))]
+        let root_url = "https://rocketprinter.github.io/fractal-studio".to_string();
+        cc.egui_ctx.data_mut(|data|data.insert_temp(Id::new("root_url"), root_url));
+
+        // if we're in wasm, try to load a fractal from the current url
+        #[cfg(target_arch = "wasm32")]
+        {
+            use crate::fractal::Fractal;
+            use log::error;
+            if let Some(code) = cc.integration_info.web_info.location.query_map.get("fractal") {
+                // is fractal appears multiple times, we only consider the first appearance
+                match Fractal::from_code(code[0].as_ref()) {
+                    Ok(fractal) => settings.fractal = fractal,
+                    Err(e) => error!("Failed to load fractal from url: {}", e),
+                }
+            }
+        }
 
         EguiApp {
             settings,
-            visualizer: Visualizer::new(cc.wgpu_render_state.as_ref().unwrap().target_format ),
+            visualizer: Visualizer::default(),
             toasts: Toasts::default().with_anchor(Anchor::TopLeft),
-
-            set_info: false,
         }
 
     }
 }
 
 impl App for EguiApp {
-
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.toasts.show(ctx);
-
-        // used for later accessing the url
-        if !self.set_info {
-            self.set_info = true;
-            let info = Arc::new(frame.info());
-            ctx.data_mut(|data| data.insert_temp(Id::new("integration_info"), info.clone()));
-
-            // if we're running in web try loading the fractal from the url
-            #[cfg(target_arch = "wasm32")]
-            {
-                use crate::fractal::Fractal;
-                use log::error;
-                if let Some(code) = info.web_info.location.query_map.get("fractal") {
-                    match Fractal::from_code(code) {
-                        Ok(fractal) => self.settings.fractal = fractal,
-                        Err(e) => error!("Failed to load fractal from url: {}", e),
-                    }
-                }
-            }
-        }
 
         self.settings.show(ctx, &mut self.toasts);
 
@@ -69,7 +71,7 @@ impl App for EguiApp {
         });
     }
 
-    /// Called by the frame work to save state before shutdown.
+    /// Called by the framework to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, &self.settings);
     }

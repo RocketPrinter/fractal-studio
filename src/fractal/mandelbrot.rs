@@ -1,5 +1,5 @@
 use std::ops::Not;
-use eframe::egui::{Button, ComboBox, CursorIcon, DragValue, Painter, Slider, Ui, Vec2, Widget, WidgetText};
+use eframe::egui::{Button, ComboBox, CursorIcon, DragValue, Painter, Slider, SliderClamping, Ui, Vec2, Widget, WidgetText};
 use encase::{ShaderType, UniformBuffer};
 use nalgebra::ComplexField;
 use crate::app::widgets::{c32_ui_full, option_checkbox};
@@ -64,7 +64,7 @@ impl MandelbrotFamily {
             multi_e: None,
         }
     }
-    
+
     pub fn is_julia(&self) -> bool { self.julia_c.is_some() }
 }
 
@@ -82,14 +82,14 @@ impl FractalTrait for MandelbrotFamily {
     fn settings_ui(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.label("Iterations");
-            DragValue::new(&mut self.iterations).speed(1).clamp_range(1..=3000).ui(ui);
+            DragValue::new(&mut self.iterations).speed(1).range(1..=3000).ui(ui);
         });
 
         ui.horizontal(|ui| {
             ui.label("Variations");
             let arr = [Variant::Mandelbrot, Variant::Modified, Variant::BurningShip];
             let mut index = arr.iter().position(|v| *v == self.variant).unwrap();
-            ComboBox::from_id_source("variation_selector")
+            ComboBox::from_id_salt("variation_selector")
                 .selected_text(self.variant)
                 .show_index(ui, &mut index, arr.len(), |i|arr[i]);
             self.variant = arr[index];
@@ -134,7 +134,7 @@ impl FractalTrait for MandelbrotFamily {
         if let Some(e) = &mut self.multi_e {
             ui.horizontal(|ui| {
                 ui.label("e");
-                Slider::new(e, 1.0..=6.).drag_value_speed(0.02).clamp_to_range(false).ui(ui);
+                Slider::new(e, 1.0..=6.).drag_value_speed(0.02).clamping(SliderClamping::Never).ui(ui);
             });
         }
     }

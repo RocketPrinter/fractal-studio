@@ -12,25 +12,27 @@ members = [
 [dependencies]
 fractal-studio-macros = { path = "macros" }
 
-#todo: update egui to 0.23
-eframe = { version = "0.22.0", default-features = false, features = [
-    "accesskit", "default_fonts", "wgpu", "persistence",
+eframe = { version = "0.31.0", default-features = false, features = [
+    "accesskit", "default_fonts", "web_screen_reader",
+    "wgpu", "persistence", "wayland", "x11",
 ] }
-egui_extras = "0.22.0"
-egui-notify = "0.9.0"
-# version must match eframe's wgpu dependency
-wgpu = { version = "0.16.3", features = ["webgl"]}
 
+# versions must match!
+wgpu = { version = "24.0.1", features = ["webgl"]}
+egui_extras = "0.31.0"
+egui-notify = "0.19.0"
+getrandom_eframe = { package = "getrandom", version = "0.2.1", features = ["js"] }
+
+rand = "0.9.0"
+getrandom = { version = "0.3.1", features = ["wasm_js"] }
 log = "0.4"
 anyhow = "1.0.95"
 serde = { version = "1", features = ["derive"] }
 lazy_static = "1.5.0"
 strum = { version = "0.27.0", features = ["derive"] }
 bytemuck = "1.21.0"
-rand = "0.9.0"
-getrandom = { version = "0.3.1", features = ["wasm_js"] }
 rmp-serde = "1.3.0"
-base64 = "0.22.1"
+base64 = "0.21.7"
 url = "2.5.4"
 enum_dispatch = "0.3.13"
 encase = { version = "0.10.0", features = ["nalgebra"] }
@@ -43,6 +45,7 @@ env_logger = "0.11.6"
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
+web-sys = "0.3.70"           # to access the DOM (to hide the loading text)
 
 [profile.release]
 opt-level = 2 # fast and small wasm
