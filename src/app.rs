@@ -4,7 +4,10 @@ mod visualizer;
 mod library;
 mod rendering;
 
-use eframe::egui::{CentralPanel, Frame, Id};
+use std::ops::Deref;
+use std::sync::Arc;
+
+use eframe::egui::{CentralPanel, ColorImage, Frame, Id};
 use eframe::{egui, App, CreationContext};
 use egui_notify::{Anchor, Toasts};
 use rendering::RenderData;
@@ -59,9 +62,16 @@ impl EguiApp {
 
 impl App for EguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.toasts.show(ctx);
+        // don't render most of the UI if we're taking a screenshot
+        let screenshot_triggered = self.visualizer.screenshot_triggered;
 
-        self.settings.show(ctx, &mut self.toasts);
+        if !screenshot_triggered {
+            copy_screenshots_to_clipboard(ctx, &mut self.toasts);
+
+            self.settings.show(ctx, &mut self.toasts);
+
+            self.toasts.show(ctx);
+        }
 
         CentralPanel::default()
             // remove margin and background
@@ -69,10 +79,34 @@ impl App for EguiApp {
             .show(ctx, |ui| {
             self.visualizer.ui(&mut self.settings, ui);
         });
+
+        if screenshot_triggered {
+            self.visualizer.screenshot_triggered = false;
+        }
     }
 
     /// Called by the framework to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, &self.settings);
+    }
+}
+
+fn copy_screenshots_to_clipboard(ctx: &egui::Context, toasts: &mut Toasts) {
+    let screenshots: Vec<Arc<ColorImage>> = ctx.input(|i| {
+        i.events.iter().filter_map(|e| {
+            match e {
+                egui::Event::Screenshot { image, .. } => Some(image.clone()),
+              _ => None,
+            }
+        }).collect()
+    });
+
+    if screenshots.len() > 0 {
+        toasts.info("Copied screenshot to the clipboard");
+    }
+
+    for s in screenshots {
+        // the api forces us to clone the image
+        ctx.copy_image(s.deref().clone());
     }
 }

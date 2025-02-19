@@ -5,7 +5,7 @@ use crate::fractal::mandelbrot::MandelbrotFamily;
 use crate::fractal::newtons::Newtons;
 use crate::fractal::test_grid::TestGrid;
 use crate::fractal::{Fractal, FractalDiscriminants, FractalTrait};
-use eframe::egui::{self, vec2, Align2, Area, Button, CollapsingHeader, ComboBox, Id, RichText, SidePanel, TextEdit, Ui, Widget, Window, Vec2, Layout, Align};
+use eframe::egui::{self, vec2, Align, Align2, Area, Button, CollapsingHeader, ComboBox, Id, Layout, Modal, RichText, SidePanel, TextEdit, Ui, Vec2, Widget, Window};
 use egui_extras::{Size, StripBuilder};
 use std::default::Default;
 use egui_notify::Toasts;
@@ -22,7 +22,7 @@ pub struct Settings {
     #[serde(skip)]
     pub hide: bool,
     #[serde(skip)]
-    import: (bool, String),
+    import_modal: (bool, String),
 }
 
 impl Default for Settings {
@@ -34,7 +34,7 @@ impl Default for Settings {
             library_window_open: false,
             debug_label: true,
             hide: false,
-            import: (false, String::new()),
+            import_modal: (false, String::new())
         }
     }
 }
@@ -42,6 +42,7 @@ impl Default for Settings {
 impl Settings {
     pub fn show(&mut self, ctx: &egui::Context, toasts: &mut Toasts) {
         if self.hide {
+            // draw a little triangle to reopen the menu
             Area::new(Id::new("settings_open"))
                 .anchor(Align2::RIGHT_TOP, vec2(0., 8.))
                 .show(ctx, |ui| {
@@ -88,6 +89,8 @@ impl Settings {
             });
 
         self.welcome_window(ctx);
+
+        self.import_modal(ctx, toasts);
     }
 
     fn main_ui(&mut self, ui: &mut Ui) {
@@ -159,31 +162,8 @@ impl Settings {
 
     fn hamburger_menu_ui(&mut self, ui: &mut Ui, toasts: &mut Toasts) {
 
-        if ui.button("Import link").clicked() {
-            self.import.0 = !self.import.0;
-        }
-
-        if self.import.0 {
-            ui.separator();
-
-            TextEdit::multiline(&mut self.import.1)
-                .hint_text("Link or code")
-                .desired_width(150.)
-                .ui(ui);
-
-            if ui.button("Import").clicked() {
-                match Fractal::from_link(&self.import.1) {
-                    Ok(fractal) => {
-                        self.fractal = fractal;
-                        self.import.1.clear();
-                        toasts.success("Loaded fractal");
-                    }
-                    Err(e) => { toasts.add(error_toast(e));},
-                }
-            }
-
-            // we shortcircuit and don't draw the rest of the menu
-            return;
+        if ui.button("Import from link").clicked() {
+            self.import_modal.0 = true;
         }
 
         if ui.button("Copy link to clipboard").clicked() {
@@ -213,15 +193,34 @@ impl Settings {
                 if ui.checkbox(&mut debug_on_hover, "Debug on hover" ).changed() {
                     ui.ctx().set_debug_on_hover(debug_on_hover);
                 }
+
                 if ui.button("Test grid").clicked() {
                     self.fractal = Fractal::TestGrid(TestGrid::default());
                 }
+
+                ui.label("egui menus");
+
+                let ctx = ui.ctx().clone();
+                CollapsingHeader::new("settings").show(ui, |ui| {
+                    ctx.settings_ui(ui);
+                });
+                CollapsingHeader::new("inspection").show(ui, |ui| {
+                    ctx.inspection_ui(ui);
+                });
+                CollapsingHeader::new("memory").show(ui, |ui| {
+                    ctx.memory_ui(ui);
+                });
+                CollapsingHeader::new("texture").show(ui, |ui| {
+                    ctx.texture_ui(ui);
+                });
             });
     }
 
     // returns the height of the widgets
     fn bottom_text_ui(ui: &mut Ui) -> f32 {
         ui.spacing_mut().item_spacing.x = 0.0;
+
+        //ui.label(format!("v{}", env!("CARGO_PKG_VERSION")));
 
         ui.horizontal_wrapped(|ui| {
             ui.label("Powered by ");
@@ -270,5 +269,44 @@ impl Settings {
             });
 
         if close_window {self.welcome_window_open = false}
+    }
+
+    fn import_modal(&mut self, ctx: &egui::Context, toasts: &mut Toasts) {
+        if !self.import_modal.0 { return; }
+
+        let modal = Modal::new(Id::new("import_modal"))
+            .show(ctx, |ui| {
+            ui.set_width(250.);
+
+            ui.heading("Import from link");
+
+            TextEdit::multiline(&mut self.import_modal.1)
+                .hint_text("paste link here")
+                .ui(ui);
+
+            ui.separator();
+
+            ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                if ui.button("Ok").clicked() {
+                    match Fractal::from_link(&self.import_modal.1) {
+                        Ok(fractal) => {
+                            self.fractal = fractal;
+                            self.import_modal.1.clear();
+                            toasts.success("Loaded fractal");
+                            self.import_modal.0 = false;
+                        }
+                        Err(e) => { toasts.add(error_toast(e));},
+                    }
+                }
+
+                if ui.button("Cancel").clicked() {
+                    self.import_modal.0 = false;
+                }
+            });
+        });
+
+        if modal.should_close() {
+            self.import_modal.0 = false;
+        }
     }
 }

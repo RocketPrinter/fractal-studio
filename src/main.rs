@@ -20,6 +20,7 @@ fn main() -> eframe::Result<()> {
         wgpu::DeviceDescriptor {
             label: Some("egui wgpu device"),
             required_features: wgpu::Features::default(),
+            // since the web version is limited to webgl2, it's helpful to limit the features so I can test the native version
             required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
             memory_hints: Default::default(),
         }

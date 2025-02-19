@@ -1,5 +1,5 @@
 use bytemuck::bytes_of;
-use eframe::egui::{vec2, Align, Align2, Button, Layout, Sense, Ui, UiBuilder, Vec2, Widget};
+use eframe::egui::{vec2, Align, Align2, Button, Layout, Sense, Ui, UiBuilder, Vec2, ViewportCommand, Widget};
 use eframe::egui_wgpu::Callback;
 use encase::UniformBuffer;
 use crate::app::settings::Settings;
@@ -12,13 +12,15 @@ use super::rendering::{RendererCallback, MAIN_UNIFORM_BUFFER_SIZE};
 pub struct Visualizer {
     scale: f32,
     offset: Vec2,
+
+    pub screenshot_triggered: bool,
 }
 
 const ZOOM_FACTOR: f32 = -0.001;
 
 impl Default for Visualizer {
     fn default() -> Self {
-        Self { scale: 1., offset: Vec2::ZERO, }
+        Self { scale: 1., offset: Vec2::ZERO, screenshot_triggered: false, }
     }
 }
 
@@ -74,6 +76,9 @@ impl Visualizer {
 
         painter.add(Callback::new_paint_callback(painter.clip_rect(), callback));
 
+        // if a screenshot is being taken don't draw anything extra
+        if self.screenshot_triggered { return; }
+
         // fractals can draw extra stuff
         settings.fractal.draw_extra(&painter, cursor_shader_space);
 
@@ -87,9 +92,14 @@ impl Visualizer {
         // position reset button, we have to do some funky stuff to get it to the right place
         ui.allocate_new_ui(UiBuilder::new().max_rect(ui.max_rect().shrink(5.)), |ui| {
             ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
-                if !settings.hide && Button::new("🏠").fill(get_transparent_button_fill(ui.visuals(), 0.7)).ui(ui).clicked() {
+                if Button::new("🏠").fill(get_transparent_button_fill(ui.visuals(), 0.7)).ui(ui).clicked() {
                     self.scale = 1.;
                     self.offset = Vec2::ZERO;
+                }
+
+                if Button::new("⛶").fill(get_transparent_button_fill(ui.visuals(), 0.7)).ui(ui).clicked() {
+                    ui.ctx().send_viewport_cmd(ViewportCommand::Screenshot(Default::default()));
+                    self.screenshot_triggered = true;
                 }
             });
         });
