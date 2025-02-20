@@ -35,6 +35,8 @@ impl Default for Lyapunov {
 }
 
 impl FractalTrait for Lyapunov {
+    fn label(&mut self) ->  &'static str { "Lyapunov's Fractal" }
+
     fn settings_ui(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui|{
             ui.label("Iterations");
@@ -75,10 +77,6 @@ impl FractalTrait for Lyapunov {
                     }).collect();
             }
         });
-    }
-
-    fn explanation_ui(&mut self, ui: &mut Ui) {
-        ui.label("todo"); // todo
     }
 
     fn get_shader(&self) -> Shader { Shader::Lyapunov(self.variant) }

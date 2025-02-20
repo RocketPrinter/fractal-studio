@@ -60,7 +60,7 @@ impl Library {
 
                 const NR_COL: usize = 3;
                 Grid::new("included_fractals")
-                    // we put two fractals per column to save space
+                    // we put multiple fractals per column to save space
                     .num_columns(NR_COL)
                     .show(ui, |ui| {
                         for (i,(name, code)) in EXAMPLE_FRACTALS.iter().enumerate() {

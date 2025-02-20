@@ -1,8 +1,8 @@
 use bytemuck::{Pod, Zeroable};
 use eframe::egui::Vec2;
-use encase::{impl_vector};
+use encase::impl_vector;
 use encase::vector::{AsMutVectorParts, AsRefVectorParts, FromVectorParts};
-use nalgebra::{Complex};
+use nalgebra::Complex;
 
 pub type C32 = Complex<f32>;
 

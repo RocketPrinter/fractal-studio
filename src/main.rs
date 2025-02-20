@@ -8,23 +8,23 @@ mod math;
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
-    use std::sync::Arc;
-    use eframe::egui_wgpu::WgpuSetup;
-    use eframe::wgpu;
+    // use std::sync::Arc;
+    // use eframe::egui_wgpu::WgpuSetup;
+    // use eframe::wgpu;
 
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
-    let mut native_options = eframe::NativeOptions::default();
-    let WgpuSetup::CreateNew(ref mut setup) = native_options.wgpu_options.wgpu_setup else { unreachable!(); };
-    setup.device_descriptor = Arc::new(|_adapter|
-        wgpu::DeviceDescriptor {
-            label: Some("egui wgpu device"),
-            required_features: wgpu::Features::default(),
-            // since the web version is limited to webgl2, it's helpful to limit the features so I can test the native version
-            required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
-            memory_hints: Default::default(),
-        }
-    );
+    let native_options = eframe::NativeOptions::default();
+    // let WgpuSetup::CreateNew(ref mut setup) = native_options.wgpu_options.wgpu_setup else { unreachable!(); };
+    // setup.device_descriptor = Arc::new(|_adapter|
+    //     wgpu::DeviceDescriptor {
+    //         label: Some("egui wgpu device"),
+    //         required_features: wgpu::Features::default(),
+    //         // since the web version is limited to webgl2, it's helpful to limit the features so I can test the native version
+    //         required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
+    //         memory_hints: Default::default(),
+    //     }
+    // );
 
     eframe::run_native(
         "Fractal Visualizer",

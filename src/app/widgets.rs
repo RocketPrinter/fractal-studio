@@ -1,6 +1,10 @@
+use std::sync::LazyLock;
 use std::fmt::Display;
 use std::ops::RangeInclusive;
-use eframe::egui::{Button, Color32, DragValue, Response, Ui, Visuals, Widget, WidgetText};
+use ecolor::hex_color;
+use eframe::egui::{CollapsingHeader, ComboBox, CornerRadius, Frame, Rect, Sense, UiBuilder, Vec2};
+use eframe::egui::{color_picker::{self, Alpha}, Button, Color32, DragValue, Response, Ui, Visuals, Widget, WidgetText};
+use eframe::epaint::RectShape;
 use egui_notify::{Toast, ToastLevel};
 use crate::math::C32;
 
@@ -52,6 +56,80 @@ pub fn get_transparent_button_fill(visuals: &Visuals, gamma_mul: f32) -> Color32
     visuals.widgets.noninteractive.weak_bg_fill.gamma_multiply(gamma_mul)
 }
 
+// hex_color is not const
+static PALETTES: LazyLock<Vec<[Color32;5]>> = LazyLock::new(|| vec![
+    // https://coolors.co/palette/f79256-fbd1a2-7dcfb6-00b2ca-1d4e89
+    [hex_color!("F79256"),hex_color!("FBD1A2"),hex_color!("7DCFB6"),hex_color!("00B2CA"),hex_color!("1D4E89")],
+    // https://coolors.co/palette/f72585-7209b7-3a0ca3-4361ee-4cc9f0
+    [hex_color!("f72585"),hex_color!("7209b7"),hex_color!("3a0ca3"),hex_color!("4361ee"),hex_color!("4cc9f0")],
+    // https://coolors.co/palette/f9dbbd-ffa5ab-da627d-a53860-450920
+    [hex_color!("f9dbbd"),hex_color!("ffa5ab"),hex_color!("da627d"),hex_color!("a53860"),hex_color!("450920")],
+    // https://coolors.co/palette/0081a7-00afb9-fdfcdc-fed9b7-f07167
+    [hex_color!("0081a7"),hex_color!("00afb9"),hex_color!("fdfcdc"),hex_color!("fed9b7"),hex_color!("f07167")],
+    //[hex_color!(""),hex_color!(""),hex_color!(""),hex_color!(""),hex_color!("")],
+    //[hex_color!(""),hex_color!(""),hex_color!(""),hex_color!(""),hex_color!("")],
+    //[hex_color!(""),hex_color!(""),hex_color!(""),hex_color!(""),hex_color!("")],
+    //[hex_color!(""),hex_color!(""),hex_color!(""),hex_color!(""),hex_color!("")],
+]);
+
+// pub const NEWTONS_DEFAULT_PALETTE: usize = 0;
+
+pub fn palette_picker(ui: &mut Ui, colors: &mut[Color32], label: impl Into<WidgetText>) {
+    CollapsingHeader::new(label).show_unindented(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing = Vec2::ZERO;
+            for c in colors.iter_mut() {
+                color_picker::color_edit_button_srgba(ui, c, Alpha::Opaque);
+            }
+        });
+        ComboBox::new("dropdown", "").selected_text("Pick a palette").show_ui(ui, |ui| {
+            for palette in PALETTES.iter() {
+                if palette.len() < colors.len() { continue; }
+                let palette = &palette[0..colors.len()];
+
+                // adapted from one of the examples
+                ui.scope_builder(
+                    UiBuilder::new().sense(Sense::click()),
+                    |ui| {
+                        let resp = ui.response();
+                        let visuals = ui.style().interact(&resp);
+
+                        let resp = Frame::canvas(ui.style())
+                            .fill(visuals.bg_fill.gamma_multiply(0.3))
+                            .stroke(visuals.bg_stroke)
+                            .inner_margin(ui.spacing().menu_margin)
+                            .show(ui, |ui| {
+                                const RECT_SIZE: Vec2 = Vec2::new(30., 15.);
+                                let (_, rect) = ui.allocate_space(Vec2::new(RECT_SIZE.x * palette.len() as f32, RECT_SIZE.y));
+                                let painter = ui.painter();
+                                for (i, c) in palette.iter().enumerate() {
+                                    let shape_rect = Rect::from_min_size(rect.left_top() + Vec2::new(RECT_SIZE.x * i as f32, 0.), RECT_SIZE);
+
+                                    let mut corner_radius = CornerRadius::ZERO;
+                                    if i == 0 {
+                                        corner_radius.nw = 5;
+                                        corner_radius.sw = 5;
+                                    }
+                                    if i == palette.len() - 1 {
+                                        corner_radius.ne = 5;
+                                        corner_radius.se = 5;
+                                    }
+
+                                    let shape = RectShape::filled(shape_rect, corner_radius, *c);
+                                    painter.add(shape);
+                                }
+                            });
+
+                        if resp.response.clicked() {
+                            colors.copy_from_slice(palette);
+                        }
+                    }
+                );
+            }
+        });
+    });
+}
+
 #[macro_export]
 macro_rules! __count {
     () => (0usize);
@@ -101,4 +179,5 @@ macro_rules! evenly_spaced_out {
     ($ui:ident, vertical, $($item: tt,)+) => {
         // to implement when needed
     };
+
 }

@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use bytemuck::bytes_of;
 use eframe::egui::{vec2, Align, Align2, Button, Layout, Sense, Ui, UiBuilder, Vec2, ViewportCommand, Widget};
 use eframe::egui_wgpu::Callback;
@@ -83,10 +84,15 @@ impl Visualizer {
         settings.fractal.draw_extra(&painter, cursor_shader_space);
 
         if settings.debug_label {
+            let mut text = format!("scale:{}, offset:{:?}", self.scale, self.offset);
+            if let Some(cursor) = cursor_shader_space {
+                write!(text, ", cursor:{cursor}").unwrap();
+            }
             painter.debug_text(painter.clip_rect().left_bottom(),
                                Align2::LEFT_BOTTOM,
                                ui.style().visuals.strong_text_color(),
-                               format!("scale:{}, offset:{:?}, cursor:{cursor_shader_space:?}", self.scale, self.offset));
+                               text
+                               );
         }
 
         // position reset button, we have to do some funky stuff to get it to the right place

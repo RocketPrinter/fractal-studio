@@ -70,12 +70,12 @@ impl MandelbrotFamily {
 
 
 impl FractalTrait for MandelbrotFamily {
-    fn override_label(&mut self) -> Option<&'static str> {
+    fn label(&mut self) -> &'static str {
         match (self.julia_c.is_some(), self.multi_e.is_some()) {
-            (false, false) => None,
-            (true, false) => Some("Julia Set"),
-            (false, true) => Some("Multibrot Set"),
-            (true, true) => Some("Multijulia Set"),
+            (false, false) => "Mandelbrot Set",
+            (true,  false) => "Julia Set",
+            (false, true ) => "Multibrot Set",
+            (true,  true ) => "Multijulia Set",
         }
     }
 
@@ -137,10 +137,6 @@ impl FractalTrait for MandelbrotFamily {
                 Slider::new(e, 1.0..=6.).drag_value_speed(0.02).clamping(SliderClamping::Never).ui(ui);
             });
         }
-    }
-
-    fn explanation_ui(&mut self, _ui: &mut Ui) {
-        // todo
     }
 
     fn get_shader(&self) -> Shader {

@@ -4,7 +4,7 @@ pub mod newtons;
 pub mod lyapunov;
 
 use eframe::egui::{Context, Id, Painter, Ui, Vec2};
-use strum::{EnumDiscriminants, EnumIter, EnumMessage};
+use strum::{EnumDiscriminants, EnumMessage};
 use anyhow::{anyhow, bail, Result};
 use base64::prelude::*;
 use encase::UniformBuffer;
@@ -18,24 +18,18 @@ use crate::wgsl::Shader;
 
 #[enum_dispatch]
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, EnumDiscriminants, EnumMessage)]
-#[strum_discriminants(derive(EnumIter, EnumMessage, Hash))]
 pub enum Fractal {
     // --- Escape time ---
-    /// Test Grid
     TestGrid,
-    /// Mandelbrot Set
     MandelbrotFamily,
-    /// Newton's fractal
     Newtons,
-    /// Lyapunov's fractal
     Lyapunov,
 }
 
 #[enum_dispatch(Fractal)]
 pub trait FractalTrait {
-    fn override_label(&mut self) -> Option<&'static str> { None }
+    fn label(&mut self) -> &'static str;
     fn settings_ui(&mut self, _ui: &mut Ui) { }
-    fn explanation_ui(&mut self, _ui: &mut Ui) { }
     fn get_shader(&self) -> Shader;
     fn fill_uniform_buffer(&self, _buffer: UniformBuffer<&mut [u8]>) {}
     /// mouse_pos will be Some if the mouse is hovering over the visualizer

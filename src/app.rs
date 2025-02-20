@@ -101,7 +101,7 @@ fn copy_screenshots_to_clipboard(ctx: &egui::Context, toasts: &mut Toasts) {
         }).collect()
     });
 
-    if screenshots.len() > 0 {
+    if !screenshots.is_empty() {
         toasts.info("Copied screenshot to the clipboard");
     }
 

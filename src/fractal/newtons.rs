@@ -53,6 +53,8 @@ impl Default for Newtons {
 }
 
 impl FractalTrait for Newtons {
+    fn label(&mut self) ->  &'static str { "Newton's Fractal" }
+
     fn settings_ui(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui|{
             ui.label("Iterations");
@@ -112,10 +114,6 @@ impl FractalTrait for Newtons {
         });
     }
 
-    fn explanation_ui(&mut self, _ui: &mut Ui) {
-        // todo
-    }
-
     fn get_shader(&self) -> Shader { Shader::Newtons }
 
     fn fill_uniform_buffer(&self, buffer: UniformBuffer<&mut [u8]>) {
@@ -167,6 +165,5 @@ impl FractalTrait for Newtons {
                 Pick::C => self.c = vec2_to_c32(&mouse_pos),
             }
         }
-        //todo: draw roots
     }
 }

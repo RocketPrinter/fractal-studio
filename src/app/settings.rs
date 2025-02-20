@@ -5,11 +5,9 @@ use crate::fractal::mandelbrot::MandelbrotFamily;
 use crate::fractal::newtons::Newtons;
 use crate::fractal::test_grid::TestGrid;
 use crate::fractal::{Fractal, FractalDiscriminants, FractalTrait};
-use eframe::egui::{self, vec2, Align, Align2, Area, Button, CollapsingHeader, ComboBox, Id, Layout, Modal, RichText, SidePanel, TextEdit, Ui, Vec2, Widget, Window};
-use egui_extras::{Size, StripBuilder};
+use eframe::egui::{self, vec2, Align, Align2, Area, Button, CollapsingHeader, ComboBox, Id, Layout, Modal, RichText, SidePanel, Sides, TextEdit, Ui, UiBuilder, Vec2, Widget, Window};
 use std::default::Default;
 use egui_notify::Toasts;
-use strum::EnumMessage;
 use crate::app::library;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -54,29 +52,23 @@ impl Settings {
 
         SidePanel::right("settings_panel").show_animated(ctx, !self.hide, |ui| {
             ui.add_space(5.);
-            ui.horizontal(|ui| {
-                ui.heading("Fractal Studio");
-
-                ui.spacing_mut().item_spacing.x /= 2.;
-                ui.menu_button("☰", |ui| self.hamburger_menu_ui(ui, toasts));
-                if ui.button("⏵").clicked() {
-                    self.hide = true;
+            Sides::new().show(ui,
+                |ui|ui.heading("Fractal Studio"),
+                |ui| {
+                    ui.spacing_mut().item_spacing.x /= 2.;
+                    if ui.button("⏵").clicked() {
+                        self.hide = true;
+                    }
+                    ui.menu_button("☰", |ui| self.hamburger_menu_ui(ui, toasts));
                 }
-            });
+            );
             ui.separator();
 
-            let height_id = ui.id().with("bottom_text_h");
-            let bottom_height = ui.data(|data| data.get_temp(height_id).unwrap_or_default());
-            StripBuilder::new(ui)
-                .size(Size::remainder())
-                .size(Size::exact(bottom_height))
-                .vertical(|mut strip| {
-                    strip.cell(|ui| self.main_ui(ui));
-                    strip.cell(|ui| {
-                        let new_height = Self::bottom_text_ui(ui);
-                        ui.data_mut(|data| data.insert_temp(height_id, new_height));
-                    })
-                });
+            self.main_ui(ui);
+            ui.scope_builder(
+                UiBuilder::new().sizing_pass().layout(Layout::bottom_up(Align::Min)),
+                Self::bottom_text_ui,
+            );
         });
 
         Window::new("Library")
@@ -95,10 +87,7 @@ impl Settings {
 
     fn main_ui(&mut self, ui: &mut Ui) {
         let fractal_d = FractalDiscriminants::from(&self.fractal);
-        let fractal_label = self
-            .fractal
-            .override_label()
-            .unwrap_or_else(|| fractal_d.get_documentation().unwrap_or_default());
+        let fractal_label = self.fractal.label();
         ui.horizontal(|ui| {
             ui.label("Fractal");
             ComboBox::from_id_salt("Fractal selector")
@@ -113,44 +102,32 @@ impl Settings {
                         false
                     };
 
-                    if ui
-                        .selectable_label(
+                    if ui.selectable_label(
                             fractal_d == FD::MandelbrotFamily && !is_julia,
-                            FD::MandelbrotFamily.get_documentation().unwrap_or_default(),
-                        )
-                        .clicked()
-                    {
+                            "Mandelbrot Set",
+                        ).clicked() {
                         self.fractal =
                             Fractal::MandelbrotFamily(MandelbrotFamily::default_mandelbrot());
                     }
 
-                    if ui
-                        .selectable_label(
+                    if ui.selectable_label(
                             fractal_d == FD::MandelbrotFamily && is_julia,
                             "Julia Set",
-                        )
-                        .clicked()
-                    {
+                        ).clicked() {
                         self.fractal = Fractal::MandelbrotFamily(MandelbrotFamily::default_julia());
                     }
 
-                    if ui
-                        .selectable_label(
+                    if ui.selectable_label(
                             fractal_d == FD::Newtons,
-                            FD::Newtons.get_documentation().unwrap_or_default(),
-                        )
-                        .clicked()
-                    {
+                            "Newton's Fractal",
+                        ).clicked() {
                         self.fractal = Fractal::Newtons(Newtons::default());
                     }
 
-                    if ui
-                        .selectable_label(
+                    if ui.selectable_label(
                             fractal_d == FD::Lyapunov,
-                            FD::Lyapunov.get_documentation().unwrap_or_default(),
-                        )
-                        .clicked()
-                    {
+                            "Lyapunov's Fractal",
+                        ).clicked() {
                         self.fractal = Fractal::Lyapunov(Lyapunov::default());
                     }
                     ui.small("More coming soon...")
@@ -216,31 +193,22 @@ impl Settings {
             });
     }
 
-    // returns the height of the widgets
-    fn bottom_text_ui(ui: &mut Ui) -> f32 {
+    fn bottom_text_ui(ui: &mut Ui) {
         ui.spacing_mut().item_spacing.x = 0.0;
 
-        //ui.label(format!("v{}", env!("CARGO_PKG_VERSION")));
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Read the source on ");
+            ui.hyperlink_to("Github.", "https://github.com/RocketPrinter/fractal-studio");
+        });
 
         ui.horizontal_wrapped(|ui| {
             ui.label("Powered by ");
             ui.hyperlink_to("egui ", "https://www.egui.rs/");
             ui.label("and ");
             ui.hyperlink_to("wgpu. ", "https://wgpu.rs/");
-        })
-        .response
-        .rect
-        .height()
-            + ui.horizontal_wrapped(|ui| {
-                ui.label("Check the source or ");
-                ui.label(RichText::new('★').color(ui.style().visuals.warn_fg_color));
-                ui.label(" on ");
-                ui.hyperlink_to("Github.", "https://github.com/RocketPrinter/fractal-studio");
-            })
-            .response
-            .rect
-            .height()
-            + 5.
+        });
+
+        ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
     }
 
     fn welcome_window(&mut self, ctx: &egui::Context) {
