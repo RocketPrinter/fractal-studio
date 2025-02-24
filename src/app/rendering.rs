@@ -95,7 +95,7 @@ impl RenderData {
     }
 }
 
-pub const MAIN_UNIFORM_BUFFER_SIZE: usize = 144;
+pub const MAIN_UNIFORM_BUFFER_SIZE: usize = 224;
 
 pub struct RendererCallback {
     pub shader_code: Shader,

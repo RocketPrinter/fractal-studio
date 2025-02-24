@@ -1,14 +1,12 @@
-use std::sync::LazyLock;
 use std::fmt::Display;
 use std::ops::RangeInclusive;
-use ecolor::hex_color;
 use eframe::egui::{CollapsingHeader, ComboBox, CornerRadius, Frame, Rect, Sense, UiBuilder, Vec2};
 use eframe::egui::{color_picker::{self, Alpha}, Button, Color32, DragValue, Response, Ui, Visuals, Widget, WidgetText};
 use eframe::epaint::RectShape;
 use egui_notify::{Toast, ToastLevel};
-use crate::math::C32;
+use num_complex::Complex32;
 
-pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, range: Option<RangeInclusive<f32>>) {
+pub fn c32_ui(ui: &mut Ui, v: &mut Complex32, speed: Option<f32>, range: Option<RangeInclusive<f32>>) {
     ui.horizontal(|ui| {
         let mut x = DragValue::new(&mut v.re);
         let mut y = DragValue::new(&mut v.im);
@@ -28,7 +26,7 @@ pub fn c32_ui(ui: &mut Ui, v: &mut C32, speed: Option<f32>, range: Option<RangeI
 }
 
 /// also has a label and a button for enabling picking
-pub fn c32_ui_full(ui: &mut Ui, label: impl Into<WidgetText>, v: &mut C32, speed: Option<f32>, range: Option<RangeInclusive<f32>>) -> Response {
+pub fn c32_ui_full(ui: &mut Ui, label: impl Into<WidgetText>, v: &mut Complex32, speed: Option<f32>, range: Option<RangeInclusive<f32>>) -> Response {
     ui.label(label);
     c32_ui(ui, v, speed, range);
     Button::new("🖱").small().ui(ui)
@@ -56,25 +54,7 @@ pub fn get_transparent_button_fill(visuals: &Visuals, gamma_mul: f32) -> Color32
     visuals.widgets.noninteractive.weak_bg_fill.gamma_multiply(gamma_mul)
 }
 
-// hex_color is not const
-static PALETTES: LazyLock<Vec<[Color32;5]>> = LazyLock::new(|| vec![
-    // https://coolors.co/palette/f79256-fbd1a2-7dcfb6-00b2ca-1d4e89
-    [hex_color!("F79256"),hex_color!("FBD1A2"),hex_color!("7DCFB6"),hex_color!("00B2CA"),hex_color!("1D4E89")],
-    // https://coolors.co/palette/f72585-7209b7-3a0ca3-4361ee-4cc9f0
-    [hex_color!("f72585"),hex_color!("7209b7"),hex_color!("3a0ca3"),hex_color!("4361ee"),hex_color!("4cc9f0")],
-    // https://coolors.co/palette/f9dbbd-ffa5ab-da627d-a53860-450920
-    [hex_color!("f9dbbd"),hex_color!("ffa5ab"),hex_color!("da627d"),hex_color!("a53860"),hex_color!("450920")],
-    // https://coolors.co/palette/0081a7-00afb9-fdfcdc-fed9b7-f07167
-    [hex_color!("0081a7"),hex_color!("00afb9"),hex_color!("fdfcdc"),hex_color!("fed9b7"),hex_color!("f07167")],
-    //[hex_color!(""),hex_color!(""),hex_color!(""),hex_color!(""),hex_color!("")],
-    //[hex_color!(""),hex_color!(""),hex_color!(""),hex_color!(""),hex_color!("")],
-    //[hex_color!(""),hex_color!(""),hex_color!(""),hex_color!(""),hex_color!("")],
-    //[hex_color!(""),hex_color!(""),hex_color!(""),hex_color!(""),hex_color!("")],
-]);
-
-// pub const NEWTONS_DEFAULT_PALETTE: usize = 0;
-
-pub fn palette_picker(ui: &mut Ui, colors: &mut[Color32], label: impl Into<WidgetText>) {
+pub fn palette_editor<const N: usize>(ui: &mut Ui, colors: &mut[Color32; N], label: impl Into<WidgetText>, dropdown_palettes: &[[Color32;N]]) {
     CollapsingHeader::new(label).show_unindented(ui, |ui| {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing = Vec2::ZERO;
@@ -83,18 +63,17 @@ pub fn palette_picker(ui: &mut Ui, colors: &mut[Color32], label: impl Into<Widge
             }
         });
         ComboBox::new("dropdown", "").selected_text("Pick a palette").show_ui(ui, |ui| {
-            for palette in PALETTES.iter() {
-                if palette.len() < colors.len() { continue; }
+            for palette in dropdown_palettes.iter() {
                 let palette = &palette[0..colors.len()];
 
                 // adapted from one of the examples
-                ui.scope_builder(
+                let resp = ui.scope_builder(
                     UiBuilder::new().sense(Sense::click()),
                     |ui| {
                         let resp = ui.response();
                         let visuals = ui.style().interact(&resp);
 
-                        let resp = Frame::canvas(ui.style())
+                        Frame::canvas(ui.style())
                             .fill(visuals.bg_fill.gamma_multiply(0.3))
                             .stroke(visuals.bg_stroke)
                             .inner_margin(ui.spacing().menu_margin)
@@ -119,12 +98,12 @@ pub fn palette_picker(ui: &mut Ui, colors: &mut[Color32], label: impl Into<Widge
                                     painter.add(shape);
                                 }
                             });
-
-                        if resp.response.clicked() {
-                            colors.copy_from_slice(palette);
-                        }
                     }
                 );
+
+                if resp.response.clicked() {
+                    colors.copy_from_slice(palette);
+                }
             }
         });
     });

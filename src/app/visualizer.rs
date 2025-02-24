@@ -25,6 +25,7 @@ impl Default for Visualizer {
     }
 }
 
+// todo: completely refactor
 impl Visualizer {
     pub fn ui(&mut self, settings: &mut Settings, ui: &mut Ui) {
         let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
@@ -32,7 +33,6 @@ impl Visualizer {
         let aspect_ratio_correction = Vec2::new(painter.clip_rect().aspect_ratio(), 1.);
 
         // changing zoom and offset
-        // todo: refactor
         let mut cursor_shader_space: Option<Vec2> = None;
         self.offset += response.drag_delta() / painter.clip_rect().size() * vec2(-1.,1.) * 2.0;
         if let Some(hover_pos) = response.hover_pos() {
@@ -95,7 +95,7 @@ impl Visualizer {
                                );
         }
 
-        // position reset button, we have to do some funky stuff to get it to the right place
+        // corner buttons
         ui.allocate_new_ui(UiBuilder::new().max_rect(ui.max_rect().shrink(5.)), |ui| {
             ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
                 if Button::new("🏠").fill(get_transparent_button_fill(ui.visuals(), 0.7)).ui(ui).clicked() {

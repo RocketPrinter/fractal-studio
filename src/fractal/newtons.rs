@@ -1,25 +1,32 @@
+use std::sync::LazyLock;
+
 use bytemuck::bytes_of;
+use ecolor::{hex_color, Color32};
 use eframe::egui::{Button, CollapsingHeader, CursorIcon, DragValue, Grid, Painter, Ui, vec2, Vec2, Widget};
 use encase::UniformBuffer;
+use glam::{Vec2 as GVec2, Vec4 as GVec4};
+use num_complex::Complex32;
 use rand::Rng;
 use encase::ShaderType;
-use crate::app::widgets::c32_ui_full;
+use crate::app::widgets::{c32_ui_full, palette_editor};
 use crate::fractal::FractalTrait;
-use crate::math::{C32, UC32, vec2_to_c32};
-use crate::wgsl::Shader;
+use crate::wgsl::{Complex32Ext, Shader, Vec2Ext};
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Newtons {
     iterations: u32,
     /// 1..=5 roots
-    roots: Vec<C32>,
+    roots: Vec<Complex32>,
     /// u32 is the index of the root being picked
+    // extra parameters
+    a: Complex32,
+    c: Complex32,
+    threshold: f32, // can be infinity
+    #[serde(default = "default_palette")]
+    colors: [Color32; 5],
+
     #[serde(skip)]
     pick_using_cursor: Option<Pick>,
-    // extra parameters
-    a: C32,
-    c: C32,
-    threshold: f32, // can be infinity
 }
 
 // can this be more automated?
@@ -32,8 +39,9 @@ enum Pick {
 
 #[derive(ShaderType)]
 struct NewtonsUniform {
-    a: UC32,
-    c: UC32,
+    colors: [GVec4;5],
+    a: GVec2,
+    c: GVec2,
     nr_roots: u32,
     max_iterations: u32,
     threshold: f32,
@@ -43,11 +51,13 @@ impl Default for Newtons {
     fn default() -> Self {
         Self {
             iterations: 50,
-            roots: vec![C32::new(1., 0.), C32::new(-0.5, 0.866), C32::new(-0.5, -0.866)],
-            pick_using_cursor: None,
-            a: C32::new(1., 0.),
-            c: nalgebra::zero(),
+            roots: vec![Complex32::new(1., 0.), Complex32::new(-0.5, 0.866), Complex32::new(-0.5, -0.866)],
+            a: Complex32::ONE,
+            c: Complex32::ZERO,
             threshold: f32::INFINITY,
+            colors: default_palette(),
+
+            pick_using_cursor: None,
         }
     }
 }
@@ -70,7 +80,7 @@ impl FractalTrait for Newtons {
             ui.label("Roots");
             if ui.add_enabled(self.roots.len() < 5, Button::new("+").small().min_size(vec2(15.,0.))).clicked() {
                 let mut rand = rand::rng();
-                self.roots.push(C32::new(rand.random::<f32>() * 2. - 1., rand.random::<f32>() * 2. - 1.)) ;
+                self.roots.push(Complex32::new(rand.random::<f32>() * 2. - 1., rand.random::<f32>() * 2. - 1.)) ;
             }
             if ui.add_enabled(self.roots.len() > 2, Button::new("-").small().min_size(vec2(15.,0.))).clicked() {
                 self.roots.pop();
@@ -112,13 +122,15 @@ impl FractalTrait for Newtons {
                 ui.add_enabled(enabled, DragValue::new(&mut self.threshold).speed(0.1).range(0.0001..=f32::INFINITY));
             });
         });
+
+        palette_editor(ui, &mut self.colors, "Colors", COLOR_PALETTES.as_slice());
     }
 
     fn get_shader(&self) -> Shader { Shader::Newtons }
 
     fn fill_uniform_buffer(&self, buffer: UniformBuffer<&mut [u8]>) {
-        let mut polynomial_coef: [C32; 6] = [nalgebra::zero();6];
-        polynomial_coef[0] = nalgebra::one();
+        let mut polynomial_coef: [Complex32; 6] = [Complex32::ZERO;6];
+        polynomial_coef[0] = Complex32::ONE;
         for (i,root) in self.roots.iter().enumerate() {
             for j in (0..=i+1).rev() {
                 if j == 0 {
@@ -129,7 +141,7 @@ impl FractalTrait for Newtons {
             }
         }
 
-        let extra_item = [nalgebra::zero()];
+        let extra_item = [Complex32::ZERO];
         let interweaved_arrays = self.roots.iter().chain(extra_item.iter())
             .zip(polynomial_coef);
 
@@ -145,8 +157,9 @@ impl FractalTrait for Newtons {
 
         // we write the rest of the buffer normally
         UniformBuffer::new(&mut buffer[96..]).write(&NewtonsUniform {
-            a: self.a.into(),
-            c: self.c.into(),
+            colors: self.colors.map(|c|c.to_normalized_gamma_f32().into()),
+            a: self.a.to_gvec2(),
+            c: self.c.to_gvec2(),
             nr_roots: self.roots.len() as u32,
             max_iterations: self.iterations,
             threshold: self.threshold,
@@ -158,12 +171,24 @@ impl FractalTrait for Newtons {
             match pick {
                 Pick::Root(index) => {
                     if let Some(root) = self.roots.get_mut(*index as usize) {
-                        *root = vec2_to_c32(&mouse_pos);
+                        *root = mouse_pos.to_c32();
                     }
                 }
-                Pick::A => self.a = vec2_to_c32(&mouse_pos),
-                Pick::C => self.c = vec2_to_c32(&mouse_pos),
+                Pick::A => self.a = mouse_pos.to_c32(),
+                Pick::C => self.c = mouse_pos.to_c32(),
             }
         }
     }
 }
+
+fn default_palette() -> [Color32;5] { COLOR_PALETTES[0] }
+
+pub static COLOR_PALETTES: LazyLock<Vec<[Color32;5]>> = LazyLock::new(|| vec![
+    // https://coolors.co/palette/f79256-fbd1a2-7dcfb6-00b2ca-1d4e89
+    [hex_color!("F79256"),hex_color!("FBD1A2"),hex_color!("7DCFB6"),hex_color!("00B2CA"),hex_color!("1D4E89")],
+    // https://coolors.co/palette/f9dbbd-ffa5ab-da627d-a53860-450920
+    [hex_color!("f9dbbd"),hex_color!("ffa5ab"),hex_color!("da627d"),hex_color!("a53860"),hex_color!("450920")],
+    // https://coolors.co/palette/0081a7-00afb9-fdfcdc-fed9b7-f07167
+    [hex_color!("0081a7"),hex_color!("00afb9"),hex_color!("fdfcdc"),hex_color!("fed9b7"),hex_color!("f07167")],
+    // todo: more palettes
+]);

@@ -4,18 +4,20 @@ struct VertexOut {
 };
 
 struct Props {
-    scale: vec2<f32>, //0..8
-    offset: vec2<f32>,//8..16
+    scale:  vec2<f32>, //0..8
+    offset: vec2<f32>, //8..16
 
-    arr: array<Element, 6>,//16..112
-    a: vec2<f32>,//112..120
-    c: vec2<f32>,//120..128
-    nr_roots: u32,//128..132
-    max_iterations: u32,//132..136
-    threshold: f32,//136..140
-    _padding: f32,//140..144
+    arr: array<Element, 6>,     //016..112
+    colors: array<vec4<f32>, 5>,//112..192
+    a: vec2<f32>,               //192..200
+    c: vec2<f32>,               //200..208
+    nr_roots: u32,              //208..212
+    max_iterations: u32,        //212..216
+    threshold: f32,             //216..220
+    _padding: f32,              //220..224
 }
-// array elements must have a size of 16 so we interweave the roots and polynomial constant arraysa
+// array elements must have a size of 16 so we interweave the roots and polynomial constant arrays
+// https://www.w3.org/TR/WGSL/#address-space-layout-constraints
 struct Element {
     root: vec2<f32>,
     coefficient: vec2<f32>,
@@ -28,15 +30,6 @@ var<private> v_positions: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
     vec2<f32>(-1., 1.),
     vec2<f32>( 1., 1.),
     vec2<f32>( 1.,-1.),
-);
-
-// https://coolors.co/palette/f79256-fbd1a2-7dcfb6-00b2ca-1d4e89
-var<private> root_colors: array<vec4<f32>, 5> = array<vec4<f32>, 5>(
-    vec4<f32>(0.96,0.57,0.33,1.),
-    vec4<f32>(0.98,0.81,0.63,1.),
-    vec4<f32>(0.48,0.80,0.71,1.),
-    vec4<f32>(0.00,0.69,0.78,1.),
-    vec4<f32>(0.11,0.30,0.53,1.),
 );
 
 @group(0) @binding(0)
@@ -57,7 +50,7 @@ fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
     if (root == -1) {
         discard;
     }
-    return root_colors[root];
+    return props.colors[root];
 }
 
 // https://en.wikipedia.org/wiki/Newton_fractal#Implementation

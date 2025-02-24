@@ -3,7 +3,6 @@
 mod app;
 mod fractal;
 mod wgsl;
-mod math;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]

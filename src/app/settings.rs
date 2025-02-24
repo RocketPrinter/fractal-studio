@@ -166,9 +166,13 @@ impl Settings {
         CollapsingHeader::new(RichText::new("Debug").color(ui.style().visuals.weak_text_color()))
             .show(ui, |ui| {
                 ui.checkbox(&mut self.debug_label, "Debug label");
-                let mut debug_on_hover = ui.ctx().debug_on_hover();
-                if ui.checkbox(&mut debug_on_hover, "Debug on hover" ).changed() {
-                    ui.ctx().set_debug_on_hover(debug_on_hover);
+
+                #[cfg(debug_assertions)]
+                {
+                    let mut debug_on_hover = ui.ctx().debug_on_hover();
+                    if ui.checkbox(&mut debug_on_hover, "Debug on hover" ).changed() {
+                        ui.ctx().set_debug_on_hover(debug_on_hover);
+                    }
                 }
 
                 if ui.button("Test grid").clicked() {
@@ -213,7 +217,7 @@ impl Settings {
 
     fn welcome_window(&mut self, ctx: &egui::Context) {
         let mut close_window = false;
-        Window::new("Welcome!")
+        Window::new("Welcome")
             .open(&mut self.welcome_window_open)
             .collapsible(false)
             .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
@@ -221,13 +225,11 @@ impl Settings {
             .default_width(300.)
             .show(ctx, |ui| {
                 ui.add_space(7.);
-                ui.label("Explore multiple fractals by dragging and zooming.");
-                ui.add_space(7.);
-                ui.label("Tweak the settings of each fractal and discover new pretty things! (and use the link to share them)");
+                ui.label("Use the mouse or a touch screen to drag and zoom and tweak the settings to find neat fractals. You can save your creations and share them as links.");
                 ui.add_space(7.);
 
                 ui.with_layout(Layout::right_to_left(Align::TOP),|ui|{
-                    if ui.button("Check some examples >").clicked() {
+                    if ui.button("Check out some examples >").clicked() {
                         self.library_window_open = true;
                         // we usually want the user tab to be open by default but this time we want the examples to be open
                         self.library.tab = library::Tab::Examples;

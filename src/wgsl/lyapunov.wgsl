@@ -7,6 +7,8 @@ struct Props {
     scale: vec2<f32>,
     offset: vec2<f32>,
 
+    stable_col: vec4<f32>,
+    unstable_col: vec4<f32>,
     iterations: u32,
     // 1..=16
     seg_len: u32,
@@ -20,8 +22,6 @@ const PI: f32 = 3.14159265359;
 
 // brightness of color is calculated from lyapunov's exponent as follows: exp(ALPHA * abs(gamma))
 const ALPHA = 1.;
-const STABLE_COLOR   = vec3<f32>(1.0,0.76,0.0);
-const UNSTABLE_COLOR = vec3<f32>(0.,0.,1.);
 
 // the first props.iterations / IGNORE_DIV iterations are ignored to avoid instabilities
 // it doesn't seem to have a very noticiable inpact but some areas seem to look a little better?
@@ -50,11 +50,11 @@ fn vertex(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 @fragment
 fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
     let gamma = compute_exponent(in.uv);
-    return vec4<f32>(exponent_to_color(gamma), 1.);
+    return exponent_to_color(gamma);
 }
 
-fn exponent_to_color(gamma: f32) -> vec3<f32> {
-    let color = mix(STABLE_COLOR, UNSTABLE_COLOR, f32(gamma > 0.0));
+fn exponent_to_color(gamma: f32) -> vec4<f32> {
+    let color = mix(props.stable_col, props.unstable_col, f32(gamma > 0.0));
     return color * exp(-ALPHA * abs(gamma));
 }
 
@@ -131,12 +131,12 @@ fn exponent(x: f32, r: f32) -> f32 {
 }
 
 // cycles the sequence clockwise, based on seq_len
-// obviously seq needs to be initialised with props.sequence
+// seq needs to be initialised with props.sequence
 fn cycle_seq(seq: u32) -> u32 {
     return (seq >> 1u) | ((seq & 1u) << (props.seg_len - 1u));
 }
 
-fn test_seq(x: f32) -> vec3<f32> {
+/*fn test_seq(x: f32) -> vec3<f32> {
     if x < 0. {
         return vec3<f32>(1.0, 0.0, 0.0);
     }
@@ -146,4 +146,4 @@ fn test_seq(x: f32) -> vec3<f32> {
         seq = cycle_seq(seq);
     }
     return vec3(f32(seq & 1u));
-}
+}*/

@@ -1,7 +1,11 @@
 use std::fmt::{Display, Formatter};
+use std::sync::LazyLock;
+use ecolor::{hex_color, Color32};
 use eframe::egui::{ComboBox, DragValue, TextEdit, Ui, Widget};
 use encase::{ShaderType, UniformBuffer};
 use rand::{Rng, rng};
+use glam::Vec4 as GVec4;
+use crate::app::widgets::palette_editor;
 use crate::fractal::FractalTrait;
 use crate::wgsl::{LyapunovShader, Shader};
 
@@ -13,10 +17,14 @@ pub struct Lyapunov {
     sequence: String,
     variant: LyapunovShader,
     // todo: c: f32
+    #[serde(default="default_palette")]
+    colors: [Color32; 2],
 }
 
 #[derive(ShaderType)]
 struct LyapunovUniform {
+    stable_col: GVec4,
+    unstable_col: GVec4,
     iterations: u32,
     // 1..=16
     seq_len: u32,
@@ -30,6 +38,7 @@ impl Default for Lyapunov {
             iterations: 300,
             sequence: String::from("AB"),
             variant: LyapunovShader::LogisticMap,
+            colors: default_palette(),
         }
     }
 }
@@ -77,6 +86,8 @@ impl FractalTrait for Lyapunov {
                     }).collect();
             }
         });
+
+        palette_editor(ui, &mut self.colors, "Colors", COLOR_PALETTES.as_slice());
     }
 
     fn get_shader(&self) -> Shader { Shader::Lyapunov(self.variant) }
@@ -98,6 +109,8 @@ impl FractalTrait for Lyapunov {
         //println!("seq_len: {}, sequence: {:b}", seq_len, sequence);
 
         buffer.write(&LyapunovUniform {
+            stable_col: self.colors[0].to_normalized_gamma_f32().into(),
+            unstable_col: self.colors[1].to_normalized_gamma_f32().into(),
             iterations: self.iterations,
             seq_len,
             sequence,
@@ -110,11 +123,18 @@ impl Display for LyapunovShader {
         use LyapunovShader as LC;
         match self {
             LC::LogisticMap => write!(f, "Logistic map"),
-            LC::SinMap =>      write!(f, "Sine Map"),
-            LC::GaussMap =>    write!(f, "Gauss Map"),
+            LC::SinMap      => write!(f, "Sine Map"),
+            LC::GaussMap    => write!(f, "Gauss Map"),
             LC::Exponential => write!(f, "Exponential"),
-            LC::CircleMap1 =>  write!(f, "Circle Map"),
-            LC::CircleMap2 =>  write!(f, "Circle Map (alt)"),
+            LC::CircleMap1  => write!(f, "Circle Map"),
+            LC::CircleMap2  => write!(f, "Circle Map (alt)"),
         }
     }
 }
+
+fn default_palette() -> [Color32;2] { COLOR_PALETTES[0] }
+
+pub static COLOR_PALETTES: LazyLock<Vec<[Color32;2]>> = LazyLock::new(|| vec![
+    [hex_color!("FFC300"), hex_color!("0078FF")]
+    // todo more palettes
+]);

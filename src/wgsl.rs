@@ -1,5 +1,5 @@
 use std::hash::Hash;
-use eframe::wgpu::{ShaderModuleDescriptor, include_wgsl};
+use eframe::{egui::Vec2, wgpu::{include_wgsl, ShaderModuleDescriptor}};
 use fractal_studio_macros::wgsl_variants;
 use crate::wgsl::mandelbrot::MandelbrotShader;
 
@@ -50,5 +50,27 @@ wgsl_variants! {
         Exponential {FUNC: u32 = 3},
         CircleMap1  {FUNC: u32 = 4},
         CircleMap2  {FUNC: u32 = 5},
+    }
+}
+
+use num_complex::Complex32;
+
+pub trait Vec2Ext {
+    fn to_c32(&self) -> Complex32;
+}
+
+impl Vec2Ext for Vec2 {
+    fn to_c32(&self) -> Complex32 {
+        Complex32::new(self.x, self.y)
+    }
+}
+
+pub trait Complex32Ext {
+    fn to_gvec2(&self) -> glam::Vec2;
+}
+
+impl Complex32Ext for Complex32 {
+    fn to_gvec2(&self) -> glam::Vec2 {
+        glam::Vec2::new(self.re, self.im)
     }
 }

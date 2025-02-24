@@ -1,11 +1,11 @@
 use std::ops::Not;
 use eframe::egui::{Button, ComboBox, CursorIcon, DragValue, Painter, Slider, SliderClamping, Ui, Vec2, Widget, WidgetText};
 use encase::{ShaderType, UniformBuffer};
-use nalgebra::ComplexField;
+use num_complex::{Complex32, ComplexFloat};
+use glam::Vec2 as GVec2;
 use crate::app::widgets::{c32_ui_full, option_checkbox};
 use crate::fractal::FractalTrait;
-use crate::math::{C32, UC32, vec2_to_c32};
-use crate::wgsl::mandelbrot::*;
+use crate::wgsl::{mandelbrot::*, Complex32Ext, Vec2Ext};
 use crate::wgsl::Shader;
 
 /// Handles  all the mandelbrot-type fractals including Julia variations and Burning ship
@@ -14,7 +14,7 @@ pub struct MandelbrotFamily {
     iterations: u32,
     variant: Variant,
     // Some if the fractal is a julia set with the constant c
-    julia_c: Option<C32>,
+    julia_c: Option<Complex32>,
     #[serde(skip, default = "pick_c_default")]
     pick_c_using_cursor: (bool, PickCMode),
     // Some if the fractal is multi-
@@ -37,7 +37,7 @@ pub enum PickCMode {
 // check shader
 #[derive(ShaderType)]
 struct MandelbrotUniform {
-    c: UC32,
+    c: GVec2,
     iterations: u32,
     escape_radius: f32,
     exp: f32,
@@ -59,7 +59,7 @@ impl MandelbrotFamily {
         Self {
             iterations: 300,
             variant: Variant::Mandelbrot,
-            julia_c: Some(C32::new(-0.76,-0.15)),
+            julia_c: Some(Complex32::new(-0.76,-0.15)),
             pick_c_using_cursor: pick_c_default(),
             multi_e: None,
         }
@@ -97,7 +97,7 @@ impl FractalTrait for MandelbrotFamily {
 
         if self.julia_c.is_none() {
             if ui.button("To Julia Set").clicked() {
-                self.julia_c = Some(C32::i());
+                self.julia_c = Some(Complex32::I);
                 self.pick_c_using_cursor.0 = true;
             }
         } else {
@@ -158,7 +158,7 @@ impl FractalTrait for MandelbrotFamily {
         };
 
         buffer.write(&MandelbrotUniform {
-            c: self.julia_c.unwrap_or_default().into(),
+            c: self.julia_c.unwrap_or_default().to_gvec2(),
             iterations: self.iterations,
             escape_radius,
             exp: self.multi_e.unwrap_or(2.),
@@ -172,7 +172,7 @@ impl FractalTrait for MandelbrotFamily {
 
     fn draw_extra(&mut self, _painter: &Painter, mouse_pos: Option<Vec2>) {
         if let (Some(mouse_pos),(true, _),Some(c)) = (mouse_pos, &self.pick_c_using_cursor, &mut self.julia_c) {
-            *c = vec2_to_c32(&mouse_pos);
+            *c = mouse_pos.to_c32();
         }
     }
 }
